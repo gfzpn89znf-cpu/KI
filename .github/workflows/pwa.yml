@@ -20,6 +20,11 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  # llama.rn lädt im Postinstall seine nativen Bibliotheken für iOS und Android.
+  # Für den Web-Build sind die nutzlos und kosten nur Zeit und Bandbreite.
+  RNLLAMA_SKIP_POSTINSTALL: '1'
+
 jobs:
   build:
     runs-on: ubuntu-latest
