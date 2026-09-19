@@ -10,6 +10,7 @@ import test from 'node:test';
 import { parseBlocks, parseInline } from '../src/lib/markdown';
 import { buildSystemPrompt } from '../src/lib/prompt';
 import { formatBytes, quantOf } from '../src/lib/local/hub';
+import { iosMajor, isOtherBrowserOnIOS, webgpuAdvice } from '../src/lib/local/ua';
 import { buildLocalSystemPrompt, toLocalMessages } from '../src/lib/localAgent';
 import { deriveItems } from '../src/lib/render';
 import { DEFAULT_SETTINGS } from '../src/state/defaults';
@@ -191,4 +192,61 @@ test('Hub: Dateiname verrät die Quantisierung, Größen werden lesbar', () => {
   assert.equal(formatBytes(2.4 * 1024 ** 3), '2.4 GB');
   assert.equal(formatBytes(700 * 1024 ** 2), '700 MB');
   assert.equal(formatBytes(0), 'unbekannt');
+});
+
+// --- WebGPU-Erkennung (die Schwellen waren schon einmal falsch) ---
+
+const UA_IOS = (v: string) =>
+  `Mozilla/5.0 (iPhone; CPU iPhone OS ${v} like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1`;
+
+test('iOS-Version wird aus der Browserkennung gelesen', () => {
+  assert.equal(iosMajor(UA_IOS('26_0')), 26);
+  assert.equal(iosMajor(UA_IOS('18_5')), 18);
+  assert.equal(iosMajor(UA_IOS('17_6_1')), 17);
+  // "Mac OS X" im selben Text darf nicht fälschlich greifen.
+  assert.equal(iosMajor('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'), null);
+  assert.equal(iosMajor('Mozilla/5.0 (Linux; Android 14)'), null);
+});
+
+test('Fremde Browser auf iOS werden erkannt', () => {
+  assert.equal(isOtherBrowserOnIOS(`${UA_IOS('26_0')} CriOS/120.0`), true);
+  assert.equal(isOtherBrowserOnIOS(`${UA_IOS('26_0')} FxiOS/121.0`), true);
+  assert.equal(isOtherBrowserOnIOS(UA_IOS('26_0')), false);
+});
+
+test('Rat: iOS vor 18 kennt WebGPU gar nicht', () => {
+  const text = webgpuAdvice({ hasGpu: false, ua: UA_IOS('17_6'), standalone: false });
+  assert.match(text, /iOS 17/);
+  assert.match(text, /gibt es dort noch gar nicht/);
+});
+
+test('Rat: iOS 18 bis 25 braucht das Funktionsmerkmal', () => {
+  for (const version of ['18_0', '25_1']) {
+    const text = webgpuAdvice({ hasGpu: false, ua: UA_IOS(version), standalone: false });
+    assert.match(text, /ab Werk abgeschaltet/);
+    assert.match(text, /Funktionsmerkmale/);
+  }
+});
+
+test('Rat: ab iOS 26 wird nicht mehr zum Umschalten geraten', () => {
+  const text = webgpuAdvice({ hasGpu: false, ua: UA_IOS('26_0'), standalone: false });
+  assert.doesNotMatch(text, /ab Werk abgeschaltet/);
+  assert.match(text, /sollte WebGPU eingeschaltet sein/);
+});
+
+test('Rat: ab iOS 26 im Homescreen-Betrieb zeigt auf Safari', () => {
+  const text = webgpuAdvice({ hasGpu: false, ua: UA_IOS('26_0'), standalone: true });
+  assert.match(text, /Homescreen/);
+  assert.match(text, /direkt in Safari/);
+});
+
+test('Rat: fremder Browser schlägt die Versionsregel', () => {
+  const text = webgpuAdvice({ hasGpu: false, ua: `${UA_IOS('26_0')} CriOS/120.0`, standalone: false });
+  assert.match(text, /anderen Browser als Safari/);
+});
+
+test('Rat: mit WebGPU keine Fehlersuche vorschlagen', () => {
+  const text = webgpuAdvice({ hasGpu: true, ua: UA_IOS('26_0'), standalone: true });
+  assert.match(text, /vorhanden/);
+  assert.doesNotMatch(text, /Funktionsmerkmale/);
 });

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Diagnostics } from '@/components/Diagnostics';
 import { Card, SectionTitle } from '@/components/ui';
 import { confirmAction, notify } from '@/lib/dialog';
 import { QUANT_HINT, SUGGESTIONS, type Suggestion } from '@/lib/local/curated';
@@ -164,6 +165,8 @@ export default function ModelsScreen() {
               </Text>
             </Card>
           ) : null}
+
+          {!nativeReady ? <Diagnostics /> : null}
 
           {progress ? (
             <Card style={{ padding: space.lg, marginBottom: space.md }}>
@@ -397,6 +400,8 @@ function BrowserModelList({
               </Text>
             </Card>
           ) : null}
+
+          <Diagnostics />
           <Text style={{ color: theme.textDim, fontSize: 13, lineHeight: 19, marginBottom: space.md }}>
             Tipp ein Modell an, um es zu aktivieren. Beim ersten Start lädt es einmalig herunter
             (am besten im WLAN) und bleibt danach im Speicher deines Browsers – ab dann läuft es
