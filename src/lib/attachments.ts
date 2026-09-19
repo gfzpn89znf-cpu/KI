@@ -1,7 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
+
+import { readBase64 } from '@/lib/readFile';
 
 export interface PickedAttachment {
   kind: 'image' | 'pdf';
@@ -72,7 +73,7 @@ async function fromImageResult(
   // Die API akzeptiert nur diese vier Bildformate.
   const mediaType = IMAGE_TYPES.has(requested) ? requested : 'image/jpeg';
 
-  const data = asset.base64 ?? (await new File(asset.uri).base64());
+  const data = asset.base64 ?? (await readBase64(asset.uri));
   return { kind: 'image', name, mediaType, data, bytes: sizeOfBase64(data) };
 }
 
@@ -87,7 +88,7 @@ export async function pickDocument(): Promise<PickedAttachment | null> {
 
   const asset = result.assets[0];
   const name = asset.name || 'Dokument.pdf';
-  const data = await new File(asset.uri).base64();
+  const data = await readBase64(asset.uri);
   return {
     kind: 'pdf',
     name,

@@ -1,10 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Card, SectionTitle } from '@/components/ui';
+import { confirmAction, notify } from '@/lib/dialog';
 import { QUANT_HINT, SUGGESTIONS, type Suggestion } from '@/lib/local/curated';
-import { deleteModel, downloadModel, freeSpace, listInstalled, type InstalledModel } from '@/lib/local/files';
+import {
+  deleteModel,
+  downloadModel,
+  freeSpace,
+  listInstalled,
+  SUPPORTS_SEARCH,
+  type InstalledModel,
+} from '@/lib/local/files';
 import { formatBytes, listGgufFiles, quantOf, searchRepos, type GgufFile, type RepoSummary } from '@/lib/local/hub';
 import { isLocalAvailable, LOCAL_UNAVAILABLE_HINT, unload } from '@/lib/local/engine';
 import { useAppStore } from '@/state/store';
@@ -70,7 +78,7 @@ export default function ModelsScreen() {
     const fileName = file.path.split('/').pop() ?? 'modell.gguf';
     const available = freeSpace();
     if (file.size > 0 && available > 0 && file.size > available - 500 * 1024 ** 2) {
-      Alert.alert(
+      notify(
         'Zu wenig Speicher',
         `Die Datei braucht ${formatBytes(file.size)}, frei sind ${formatBytes(available)}.`,
       );
@@ -88,28 +96,26 @@ export default function ModelsScreen() {
         refresh();
         // Frisch geladenes Modell gleich aktivieren – das ist immer die Absicht.
         updateSettings({ localModel: model.name, backend: 'local' });
-        Alert.alert('Fertig', `${model.name} ist installiert und aktiv.`);
+        notify('Fertig', `${model.name} ist installiert und aktiv.`);
       })
       .catch((err: unknown) =>
-        Alert.alert('Download fehlgeschlagen', err instanceof Error ? err.message : 'Unbekannter Fehler.'),
+        notify('Download fehlgeschlagen', err instanceof Error ? err.message : 'Unbekannter Fehler.'),
       )
       .finally(() => setProgress(null));
   }
 
-  function confirmDelete(model: InstalledModel) {
-    Alert.alert('Modell löschen?', `${model.name} (${formatBytes(model.size)})`, [
-      { text: 'Abbrechen', style: 'cancel' },
-      {
-        text: 'Löschen',
-        style: 'destructive',
-        onPress: async () => {
-          if (settings.localModel === model.name) await unload();
-          deleteModel(model.name);
-          if (settings.localModel === model.name) updateSettings({ localModel: null });
-          refresh();
-        },
-      },
-    ]);
+  async function confirmDelete(model: InstalledModel) {
+    const ok = await confirmAction({
+      title: 'Modell löschen?',
+      message: `${model.name} (${formatBytes(model.size)})`,
+      confirmLabel: 'Löschen',
+      destructive: true,
+    });
+    if (!ok) return;
+    if (settings.localModel === model.name) await unload();
+    deleteModel(model.name);
+    if (settings.localModel === model.name) updateSettings({ localModel: null });
+    refresh();
   }
 
   async function activate(model: InstalledModel) {
@@ -119,6 +125,24 @@ export default function ModelsScreen() {
 
   const percent = progress && progress.total > 0 ? progress.written / progress.total : 0;
   const nativeReady = isLocalAvailable();
+
+  // Im Browser verwaltet WebLLM die Gewichte selbst: keine Suche, keine
+  // Dateiauswahl, nur eine feste Liste zum Aktivieren.
+  if (!SUPPORTS_SEARCH) {
+    return (
+      <BrowserModelList
+        models={installed}
+        activeName={settings.localModel}
+        ready={nativeReady}
+        onActivate={(model) => updateSettings({ localModel: model.name, backend: 'local' })}
+        onDelete={(model) => {
+          deleteModel(model.name);
+          if (settings.localModel === model.name) updateSettings({ localModel: null });
+          refresh();
+        }}
+      />
+    );
+  }
 
   return (
     <FlatList
@@ -171,7 +195,7 @@ export default function ModelsScreen() {
                   <Pressable
                     key={model.name}
                     onPress={() => void activate(model)}
-                    onLongPress={() => confirmDelete(model)}
+                    onLongPress={() => void confirmDelete(model)}
                     style={[
                       styles.row,
                       index < installed.length - 1 && {
@@ -328,3 +352,78 @@ const styles = StyleSheet.create({
   bar: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: space.md },
   barFill: { height: 6, borderRadius: 3 },
 });
+
+/**
+ * Auswahl im Browser. Die Gewichte lädt WebLLM beim ersten Start des Modells
+ * selbst herunter und legt sie im Browser-Cache ab – danach läuft alles offline.
+ */
+function BrowserModelList({
+  models,
+  activeName,
+  ready,
+  onActivate,
+  onDelete,
+}: {
+  models: InstalledModel[];
+  activeName: string | null;
+  ready: boolean;
+  onActivate(model: InstalledModel): void;
+  onDelete(model: InstalledModel): void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <FlatList
+      style={{ flex: 1, backgroundColor: theme.bg }}
+      contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl * 2 }}
+      data={models}
+      keyExtractor={(model) => model.id}
+      ListHeaderComponent={
+        <View>
+          {!ready ? (
+            <Card style={{ padding: space.lg, marginBottom: space.md, borderColor: theme.accent }}>
+              <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>{LOCAL_UNAVAILABLE_HINT}</Text>
+            </Card>
+          ) : null}
+          <Text style={{ color: theme.textDim, fontSize: 13, lineHeight: 19, marginBottom: space.md }}>
+            Tipp ein Modell an, um es zu aktivieren. Beim ersten Start lädt es einmalig herunter
+            (am besten im WLAN) und bleibt danach im Speicher deines Browsers – ab dann läuft es
+            ohne Internet. Kleinere Modelle sind schneller und laufen auf mehr Geräten.
+          </Text>
+        </View>
+      }
+      ListEmptyComponent={
+        <Text style={{ color: theme.textDim, fontSize: 14, lineHeight: 20 }}>
+          Für dieses Gerät ist kein passendes Modell dabei.
+        </Text>
+      }
+      renderItem={({ item }) => {
+        const active = activeName === item.name;
+        return (
+          <Pressable
+            onPress={() => onActivate(item)}
+            onLongPress={() => onDelete(item)}
+            style={[
+              styles.suggestion,
+              { backgroundColor: theme.surface, borderColor: active ? theme.accent : theme.border },
+            ]}
+          >
+            <Ionicons
+              name={active ? 'radio-button-on' : 'radio-button-off'}
+              size={19}
+              color={active ? theme.accent : theme.textDim}
+            />
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={{ color: theme.text, fontSize: 15 }}>
+                {item.name}
+              </Text>
+              <Text style={{ color: theme.textDim, fontSize: 12, marginTop: 2 }}>
+                braucht rund {formatBytes(item.size)} Grafikspeicher · lange tippen zum Entfernen
+              </Text>
+            </View>
+          </Pressable>
+        );
+      }}
+    />
+  );
+}

@@ -152,8 +152,8 @@ async function runLocalTurn(conversationId: string): Promise<void> {
     }
 
     useRuntimeStore.getState().patchStream(conversationId, { tools: ['Modell wird geladen …'] });
-    const context = await ensureModel({
-      path: installed.path,
+    await ensureModel({
+      id: installed.id,
       contextSize: state.settings.localContextSize,
       onProgress: (percent) => {
         useRuntimeStore
@@ -165,12 +165,13 @@ async function runLocalTurn(conversationId: string): Promise<void> {
     useRuntimeStore.getState().patchStream(conversationId, { tools: [] });
 
     const system = buildLocalSystemPrompt(state.settings.persona, state.memory);
-    const result = await generate(context, {
+    const result = await generate({
       messages: toLocalMessages(system, conversation.messages),
       maxTokens: 2048,
       temperature: 0.7,
       signal: controller.signal,
-      onToken: (piece) => useRuntimeStore.getState().appendStream(conversationId, { text: piece }),
+      onToken: (piece: string) =>
+        useRuntimeStore.getState().appendStream(conversationId, { text: piece }),
     });
 
     const text = result.text.trim();

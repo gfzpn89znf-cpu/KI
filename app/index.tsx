@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Empty, PrimaryButton } from '@/components/ui';
+import { confirmAction } from '@/lib/dialog';
 import { getModel } from '@/lib/models';
 import { useRuntimeStore } from '@/state/runtime';
 import { useAppStore } from '@/state/store';
@@ -46,11 +47,14 @@ export default function ConversationListScreen() {
     router.push(`/chat/${id}`);
   }
 
-  function confirmDelete(id: string, title: string) {
-    Alert.alert('Gespräch löschen?', title, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteConversation(id) },
-    ]);
+  async function confirmDelete(id: string, title: string) {
+    const ok = await confirmAction({
+      title: 'Gespräch löschen?',
+      message: title,
+      confirmLabel: 'Löschen',
+      destructive: true,
+    });
+    if (ok) deleteConversation(id);
   }
 
   const needsKey = apiKeyLoaded && !apiKey.trim();
@@ -93,7 +97,7 @@ export default function ConversationListScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push(`/chat/${item.id}`)}
-            onLongPress={() => confirmDelete(item.id, item.title)}
+            onLongPress={() => void confirmDelete(item.id, item.title)}
             style={({ pressed }) => [
               styles.row,
               { borderBottomColor: theme.border },

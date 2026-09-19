@@ -1,13 +1,8 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
-const FOLDER = 'models';
+import type { InstalledModel } from '@/lib/local/types';
 
-export interface InstalledModel {
-  /** Dateiname, dient zugleich als ID. */
-  name: string;
-  path: string;
-  size: number;
-}
+const FOLDER = 'models';
 
 function modelsDir(): Directory {
   const dir = new Directory(Paths.document, FOLDER);
@@ -20,7 +15,7 @@ export function listInstalled(): InstalledModel[] {
     return modelsDir()
       .list()
       .filter((entry): entry is File => entry instanceof File && entry.name.toLowerCase().endsWith('.gguf'))
-      .map((file) => ({ name: file.name, path: file.uri, size: file.size ?? 0 }))
+      .map((file) => ({ name: file.name, id: file.uri, size: file.size ?? 0 }))
       .sort((a, b) => a.name.localeCompare(b.name));
   } catch {
     return [];
@@ -36,6 +31,9 @@ export function deleteModel(name: string): void {
   const file = new File(modelsDir(), name);
   if (file.exists) file.delete();
 }
+
+/** Auf dem Gerät gibt es echte Dateien, die man suchen und laden muss. */
+export const SUPPORTS_SEARCH = true;
 
 /** Freier Speicherplatz auf dem Gerät in Bytes. */
 export function freeSpace(): number {
@@ -70,7 +68,7 @@ export function downloadModel(
         signal: controller.signal,
         onProgress: ({ bytesWritten, totalBytes }) => onProgress(bytesWritten, totalBytes),
       });
-      return { name: fileName, path: target.uri, size: target.size ?? 0 };
+      return { name: fileName, id: target.uri, size: target.size ?? 0 };
     } catch (err) {
       try {
         if (target.exists) target.delete();
@@ -84,3 +82,5 @@ export function downloadModel(
 
   return { promise, cancel: () => controller.abort() };
 }
+
+export type { InstalledModel };

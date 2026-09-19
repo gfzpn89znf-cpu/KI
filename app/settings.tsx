@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Chooser, type ChooserOption } from '@/components/Chooser';
 import { Card, PressRow, PrimaryButton, SectionTitle, ToggleRow } from '@/components/ui';
 import { listInstalled } from '@/lib/local/files';
 import { MODELS, type Effort } from '@/lib/models';
@@ -36,6 +37,8 @@ export default function SettingsScreen() {
   const [saved, setSaved] = useState(false);
   const [persona, setPersona] = useState(settings.persona);
   const localModels = listInstalled();
+  const [modelPicker, setModelPicker] = useState(false);
+  const [effortPicker, setEffortPicker] = useState(false);
 
   useEffect(() => setKeyDraft(apiKey), [apiKey]);
 
@@ -46,20 +49,18 @@ export default function SettingsScreen() {
     setTimeout(() => setSaved(false), 1800);
   }
 
-  function cycleEffort() {
-    const index = EFFORTS.indexOf(settings.effort);
-    updateSettings({ effort: EFFORTS[(index + 1) % EFFORTS.length] });
-  }
+  const modelOptions: ChooserOption<(typeof MODELS)[number]['id']>[] = MODELS.map((model) => ({
+    value: model.id,
+    label: model.name,
+    hint: model.tagline,
+    selected: model.id === settings.model,
+  }));
 
-  function chooseModel() {
-    Alert.alert('Standardmodell', 'Gilt für neue Gespräche.', [
-      ...MODELS.map((model) => ({
-        text: `${model.name}${model.id === settings.model ? '  ✓' : ''}`,
-        onPress: () => updateSettings({ model: model.id }),
-      })),
-      { text: 'Abbrechen', style: 'cancel' as const },
-    ]);
-  }
+  const effortOptions: ChooserOption<Effort>[] = EFFORTS.map((effort) => ({
+    value: effort,
+    label: EFFORT_LABEL[effort],
+    selected: effort === settings.effort,
+  }));
 
   return (
     <ScrollView
@@ -156,13 +157,13 @@ export default function SettingsScreen() {
           label="Standardmodell"
           hint="Für neue Gespräche"
           value={MODELS.find((m) => m.id === settings.model)?.name}
-          onPress={chooseModel}
+          onPress={() => setModelPicker(true)}
         />
         <PressRow
           label="Denktiefe"
           hint="Mehr Tiefe heißt bessere Antworten, aber langsamer und teurer"
           value={EFFORT_LABEL[settings.effort]}
-          onPress={cycleEffort}
+          onPress={() => setEffortPicker(true)}
           last
         />
       </Card>
@@ -243,6 +244,23 @@ export default function SettingsScreen() {
       <Text style={{ color: theme.textDim, fontSize: 12, textAlign: 'center', marginTop: space.xl, lineHeight: 18 }}>
         Gespräche und Gedächtnis liegen ausschließlich auf diesem Gerät.
       </Text>
+
+      <Chooser
+        visible={modelPicker}
+        title="Standardmodell"
+        subtitle="Gilt für neue Gespräche."
+        options={modelOptions}
+        onSelect={(model) => updateSettings({ model })}
+        onClose={() => setModelPicker(false)}
+      />
+      <Chooser
+        visible={effortPicker}
+        title="Denktiefe"
+        subtitle="Mehr Tiefe heißt bessere Antworten, aber langsamer und teurer."
+        options={effortOptions}
+        onSelect={(effort) => updateSettings({ effort })}
+        onClose={() => setEffortPicker(false)}
+      />
     </ScrollView>
   );
 }

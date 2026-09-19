@@ -41,7 +41,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static",
+      "name": "KI",
+      "shortName": "KI",
+      "themeColor": "#0B0D10",
+      "backgroundColor": "#0B0D10",
+      "display": "standalone",
+      "lang": "de"
     },
     "plugins": [
       "expo-router",
@@ -66,7 +73,8 @@
       ]
     ],
     "experiments": {
-      "typedRoutes": false
+      "typedRoutes": false,
+      "baseUrl": "/KI"
     }
   }
 }

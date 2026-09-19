@@ -1,5 +1,18 @@
 import { TurboModuleRegistry } from 'react-native';
-import { initLlama, type LlamaContext, type RNLlamaOAICompatibleMessage, type TokenData } from 'llama.rn';
+import { initLlama, type LlamaContext, type TokenData } from 'llama.rn';
+
+import type { GenerateOptions, GenerateResult, LoadOptions } from '@/lib/local/types';
+
+/**
+ * Lokale Ausführung auf dem Gerät über llama.cpp.
+ *
+ * Die Gegenstücke für den Browser stehen in `engine.web.ts` und bieten
+ * dieselbe Schnittstelle – der übrige Code kennt den Unterschied nicht.
+ */
+
+let context: LlamaContext | null = null;
+let loadedId: string | null = null;
+let loading: Promise<LlamaContext> | null = null;
 
 /**
  * Lokale Modelle brauchen nativen Code. In Expo Go ist der nicht dabei, deshalb
@@ -16,37 +29,23 @@ export function isLocalAvailable(): boolean {
 }
 
 export const LOCAL_UNAVAILABLE_HINT =
-  'Lokale Modelle brauchen eine richtig installierte App. In Expo Go fehlt der native Teil – siehe README, Abschnitt „Aufs iPhone bekommen".';
+  'Lokale Modelle brauchen eine richtig installierte App. In Expo Go fehlt der native Teil – nimm solange die Web-Version oder die Cloud-Betriebsart.';
 
-/**
- * Hält genau einen geladenen Modell-Kontext. Ein Handy hat nicht den Speicher
- * für zwei gleichzeitig, deshalb wird beim Wechsel der alte freigegeben.
- */
-let context: LlamaContext | null = null;
-let loadedPath: string | null = null;
-let loading: Promise<LlamaContext> | null = null;
-
-export interface LoadOptions {
-  path: string;
-  contextSize: number;
-  onProgress?(percent: number): void;
+export function loadedModelId(): string | null {
+  return loadedId;
 }
 
-export function loadedModelPath(): string | null {
-  return loadedPath;
-}
-
-export async function ensureModel(options: LoadOptions): Promise<LlamaContext> {
+export async function ensureModel(options: LoadOptions): Promise<void> {
   if (!isLocalAvailable()) throw new Error(LOCAL_UNAVAILABLE_HINT);
-  if (context && loadedPath === options.path) return context;
+  if (context && loadedId === options.id) return;
   if (loading) await loading.catch(() => undefined);
-  if (context && loadedPath === options.path) return context;
+  if (context && loadedId === options.id) return;
 
   await unload();
 
   loading = initLlama(
     {
-      model: options.path,
+      model: options.id,
       n_ctx: options.contextSize,
       // Auf dem Handy rechnet die GPU (Metal bzw. OpenCL) deutlich schneller.
       n_gpu_layers: 99,
@@ -56,8 +55,7 @@ export async function ensureModel(options: LoadOptions): Promise<LlamaContext> {
 
   try {
     context = await loading;
-    loadedPath = options.path;
-    return context;
+    loadedId = options.id;
   } finally {
     loading = null;
   }
@@ -66,7 +64,7 @@ export async function ensureModel(options: LoadOptions): Promise<LlamaContext> {
 export async function unload(): Promise<void> {
   const current = context;
   context = null;
-  loadedPath = null;
+  loadedId = null;
   if (current) {
     try {
       await current.release();
@@ -76,25 +74,10 @@ export async function unload(): Promise<void> {
   }
 }
 
-export interface GenerateOptions {
-  messages: RNLlamaOAICompatibleMessage[];
-  maxTokens: number;
-  temperature: number;
-  signal: AbortSignal;
-  onToken(text: string): void;
-}
+export async function generate(options: GenerateOptions): Promise<GenerateResult> {
+  const ctx = context;
+  if (!ctx) throw new Error('Es ist kein lokales Modell geladen.');
 
-export interface GenerateResult {
-  text: string;
-  aborted: boolean;
-  /** Token pro Sekunde bei der Ausgabe, für die Anzeige. */
-  tokensPerSecond: number;
-}
-
-export async function generate(
-  ctx: LlamaContext,
-  options: GenerateOptions,
-): Promise<GenerateResult> {
   let text = '';
   let stopped = false;
 
@@ -123,8 +106,11 @@ export async function generate(
       },
     );
 
-    const perSecond = result.timings?.predicted_per_second ?? 0;
-    return { text: text || result.text || '', aborted: stopped, tokensPerSecond: perSecond };
+    return {
+      text: text || result.text || '',
+      aborted: stopped,
+      tokensPerSecond: result.timings?.predicted_per_second ?? 0,
+    };
   } finally {
     options.signal.removeEventListener('abort', onAbort);
   }

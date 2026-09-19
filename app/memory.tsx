@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Empty } from '@/components/ui';
+import { confirmAction } from '@/lib/dialog';
 import { useAppStore } from '@/state/store';
 import { radius, space, useTheme } from '@/theme';
 
@@ -22,11 +23,14 @@ export default function MemoryScreen() {
     setDraft('');
   }
 
-  function confirmClear() {
-    Alert.alert('Alles vergessen?', 'Die KI weiß danach nichts mehr über dich.', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Alles löschen', style: 'destructive', onPress: clearMemory },
-    ]);
+  async function confirmClear() {
+    const ok = await confirmAction({
+      title: 'Alles vergessen?',
+      message: 'Die KI weiß danach nichts mehr über dich.',
+      confirmLabel: 'Alles löschen',
+      destructive: true,
+    });
+    if (ok) clearMemory();
   }
 
   return (
@@ -68,7 +72,7 @@ export default function MemoryScreen() {
       />
 
       {memory.length > 0 ? (
-        <Pressable onPress={confirmClear} style={{ padding: space.lg, alignItems: 'center' }}>
+        <Pressable onPress={() => void confirmClear()} style={{ padding: space.lg, alignItems: 'center' }}>
           <Text style={{ color: theme.danger, fontSize: 15 }}>Alles vergessen</Text>
         </Pressable>
       ) : null}

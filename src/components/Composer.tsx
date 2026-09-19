@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
-import { ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { Chooser, type ChooserOption } from '@/components/Chooser';
 import { pickDocument, pickFromCamera, pickFromLibrary, type PickedAttachment } from '@/lib/attachments';
+import { notify } from '@/lib/dialog';
 import { radius, space, useTheme } from '@/theme';
 
 interface Props {
@@ -20,6 +22,7 @@ export function Composer({ busy, hapticsEnabled, onSend, onStop }: Props) {
   const [text, setText] = useState('');
   const [attachments, setAttachments] = useState<PickedAttachment[]>([]);
   const [picking, setPicking] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const canSend = !busy && (text.trim().length > 0 || attachments.length > 0);
 
@@ -34,35 +37,28 @@ export function Composer({ busy, hapticsEnabled, onSend, onStop }: Props) {
             : await pickDocument();
       if (picked) setAttachments((current) => [...current, picked]);
     } catch (err) {
-      Alert.alert('Anhang nicht möglich', err instanceof Error ? err.message : 'Unbekannter Fehler.');
+      notify('Anhang nicht möglich', err instanceof Error ? err.message : 'Unbekannter Fehler.');
     } finally {
       setPicking(false);
     }
   }
 
-  function openAttachMenu() {
-    const labels = ['Foto aufnehmen', 'Aus der Galerie', 'PDF auswählen'];
-    const sources: Source[] = ['camera', 'library', 'document'];
-
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: [...labels, 'Abbrechen'], cancelButtonIndex: labels.length },
-        (index) => {
-          if (index < labels.length) void attach(sources[index]);
-        },
-      );
-      return;
-    }
-
-    Alert.alert('Anhang', 'Was möchtest du anhängen?', [
-      ...labels.map((label, index) => ({ text: label, onPress: () => void attach(sources[index]) })),
-      { text: 'Abbrechen', style: 'cancel' as const },
-    ]);
-  }
+  const attachOptions: ChooserOption<Source>[] = [
+    { value: 'camera', label: 'Foto aufnehmen' },
+    { value: 'library', label: 'Aus der Galerie' },
+    { value: 'document', label: 'PDF auswählen' },
+  ];
 
   function handleSend() {
     if (!canSend) return;
-    if (hapticsEnabled) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+    if (hapticsEnabled) {
+      // Im Browser gibt es kein haptisches Feedback – niemals den Versand daran scheitern lassen.
+      try {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      } catch {
+        // egal
+      }
+    }
     onSend(text, attachments);
     setText('');
     setAttachments([]);
@@ -94,7 +90,7 @@ export function Composer({ busy, hapticsEnabled, onSend, onStop }: Props) {
       ) : null}
 
       <View style={[styles.inputRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-        <Pressable hitSlop={8} onPress={openAttachMenu} disabled={picking} style={styles.iconButton}>
+        <Pressable hitSlop={8} onPress={() => setMenuOpen(true)} disabled={picking} style={styles.iconButton}>
           <Ionicons name="add" size={24} color={picking ? theme.border : theme.textDim} />
         </Pressable>
 
@@ -122,6 +118,15 @@ export function Composer({ busy, hapticsEnabled, onSend, onStop }: Props) {
           </Pressable>
         )}
       </View>
+
+      <Chooser
+        visible={menuOpen}
+        title="Anhang"
+        subtitle="Was möchtest du anhängen?"
+        options={attachOptions}
+        onSelect={(source) => void attach(source)}
+        onClose={() => setMenuOpen(false)}
+      />
     </View>
   );
 }

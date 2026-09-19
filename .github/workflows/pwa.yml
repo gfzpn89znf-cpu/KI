@@ -1,0 +1,65 @@
+name: Web-App veröffentlichen
+
+# Baut die Web-Fassung und stellt sie über GitHub Pages bereit.
+# Damit landet die App kostenlos auf dem iPhone: Seite in Safari öffnen,
+# "Zum Home-Bildschirm hinzufügen" – fertig, ohne Mac und ohne Apple-Konto.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/mobile-ai-app-chatgpt-fl7dkt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Abhängigkeiten installieren
+        run: npm ci --legacy-peer-deps
+
+      - name: Prüfen
+        run: |
+          npm run typecheck
+          npm test
+
+      - name: Web-App bauen
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Für GitHub Pages vorbereiten
+        run: |
+          # Ohne .nojekyll ignoriert Pages den Ordner _expo (führender Unterstrich).
+          touch dist/.nojekyll
+          # Pages kennt keine Umschreibungen: Jeder unbekannte Pfad soll die App
+          # laden, damit ein direkt geöffnetes Gespräch nicht ins Leere läuft.
+          cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,7 +1,9 @@
 # KI — deine eigene KI-App fürs Handy
 
 Eine Chat-App für iPhone und Android mit **zwei Betriebsarten**, zwischen denen du
-jederzeit umschaltest:
+jederzeit umschaltest. Sie läuft als native App **und** als Web-App zum
+Hinzufügen auf den Homescreen — letzteres ist auf dem iPhone der einzige
+kostenlose Weg zu einem eigenen Icon.
 
 * **Auf dem Gerät** — ein Sprachmodell läuft direkt auf dem Handy. Kostenlos, ohne
   Internet, nichts verlässt das Telefon. Dafür deutlich einfacher gestrickt.
@@ -47,78 +49,102 @@ Zur Einordnung der Cloud-Betriebsart: Anthropic trainiert **nicht** mit dem, was
 die API läuft. Die Daten landen also in keinem Firmenmodell. Sie verlassen aber das
 Handy — deshalb gibt es den lokalen Modus.
 
-## Schnellstart (Cloud-Betriebsart)
+## Kostenlos aufs iPhone — der Weg, der wirklich funktioniert
 
-Das geht sofort, ohne Xcode und ohne Apple-Konto.
+Es gibt genau einen Weg, ohne Mac, ohne Apple-Entwicklerkonto und ohne 7-Tage-Frist
+ein Icon auf deinen Homescreen zu bekommen: als **Web-App**. Safari installiert sie
+dann wie eine normale App — mit eigenem Icon, ohne Browserleiste, offline startbar.
 
-1. [Node.js](https://nodejs.org) (Version 20+) installieren
-2. **Expo Go** aus dem App Store aufs iPhone laden
-3. Einen Schlüssel auf [console.anthropic.com](https://console.anthropic.com) erzeugen
-   (*Billing* → Guthaben aufladen, 5 $ reichen lange; *API Keys* → neuer Schlüssel, beginnt mit `sk-ant-`)
-4. Im Projektordner:
+Und der lokale Modus läuft dort auch: moderne iPhones können über **WebGPU** ein
+Sprachmodell direkt im Browser rechnen. Kostenlos, ohne dass etwas das Gerät verlässt.
+
+### Schritt 1 — Veröffentlichung einschalten (einmalig, 30 Sekunden)
+
+Im GitHub-Repository: **Settings → Pages → Source: GitHub Actions** auswählen.
+
+Das genügt. Der Workflow `.github/workflows/pwa.yml` baut die App bei jedem Push und
+stellt sie bereit. Du brauchst dafür keinen eigenen Rechner.
+
+### Schritt 2 — Warten und Adresse öffnen
+
+Unter **Actions** siehst du den Lauf „Web-App veröffentlichen". Nach ein paar Minuten
+ist die App erreichbar unter:
+
+```
+https://gfzpn89znf-cpu.github.io/KI/
+```
+
+### Schritt 3 — Auf den Homescreen legen
+
+Adresse in **Safari** öffnen (nicht Chrome — nur Safari darf auf dem iPhone
+installieren), unten auf **Teilen** → **Zum Home-Bildschirm hinzufügen**.
+
+Fertig. Ab jetzt hast du ein Icon namens „KI" wie jede andere App.
+
+### Schritt 4 — Modus wählen
+
+* **Lokal und kostenlos:** Einstellungen → *Auf dem Gerät* → *Lokale Modelle* →
+  ein Modell antippen. Es lädt einmalig herunter (am besten im WLAN) und bleibt
+  danach im Speicher. Ab dann läuft alles offline.
+* **Cloud:** Einstellungen → API-Schlüssel eintragen.
+
+### Was dabei zu beachten ist
+
+* **WebGPU braucht iOS 18 oder neuer.** Ältere iPhones können nur die Cloud-Betriebsart.
+  Die App sagt dir das im Modell-Bildschirm.
+* **Im Browser ist das lokale Modell langsamer** als in der nativen App und die
+  Auswahl kleiner (WebLLM bringt eine feste Liste mit).
+* **Safari kann den Modellspeicher irgendwann leeren**, wenn das Gerät knapp wird.
+  Dann lädt das Modell beim nächsten Start erneut.
+* Der Gesprächsverlauf liegt im Browser-Speicher der App und ist auf wenige Megabyte
+  begrenzt — Bild-Anhänge werden deshalb früher aus dem Verlauf entfernt.
+
+## Alternative: Expo Go (nur Cloud, mit laufendem Rechner)
+
+Zum Entwickeln oder wenn du kein GitHub-Pages willst:
 
 ```bash
 npm install
 npx expo start
 ```
 
-5. QR-Code mit der Kamera scannen → die App startet in Expo Go
-6. In der App oben rechts aufs Zahnrad, Schlüssel einfügen, **Speichern**
+QR-Code mit der iPhone-Kamera scannen, App **Expo Go** aus dem App Store. Der
+Rechner muss dabei laufen, und die lokale Betriebsart funktioniert hier **nicht** —
+dafür fehlt der native Teil.
 
-Der Rechner muss dabei laufen. Die lokale Betriebsart funktioniert in Expo Go
-**nicht** — dazu braucht es eine richtig installierte App.
+## Native App (schneller, aber nicht kostenlos auf iOS)
 
-## Aufs iPhone bekommen (für die lokale Betriebsart)
-
-Hier kommt die unangenehme Wahrheit, und sie liegt nicht an der App, sondern an
-Apple: **Eine eigene App dauerhaft und kostenlos aufs iPhone zu bekommen, geht
-nicht.** Du hast drei Wege:
+Die native Fassung nutzt llama.cpp direkt und ist spürbar schneller als die
+Web-Variante. Nur bekommt Apple sie nicht kostenlos dauerhaft aufs iPhone:
 
 | Weg | Kosten | Voraussetzung | Haken |
 |---|---|---|---|
-| **Xcode, kostenloses Apple-ID** | 0 € | ein Mac | Die App läuft **7 Tage**, danach musst du sie neu aufspielen |
-| **Apple Developer Program** | 99 $/Jahr | Mac oder EAS-Build | Läuft ein Jahr, funktioniert einfach |
-| **Android-Gerät** | 0 € | ein Android-Handy | `.apk` bauen und installieren, fertig |
-
-### Weg 1 — Mac mit Xcode, ohne Kosten
+| **Xcode, kostenloses Apple-ID** | 0 € | ein Mac | Läuft **7 Tage**, dann neu aufspielen |
+| **Apple Developer Program** | 99 $/Jahr | — | Läuft ein Jahr, funktioniert einfach |
+| **Android** | 0 € | ein Android-Handy | Keine, `.apk` installieren und fertig |
 
 ```bash
-npm install
-npx expo prebuild --platform ios
-npx pod-install
-open ios/*.xcworkspace
-```
+# Mit Mac, kostenlos (7 Tage):
+npx expo prebuild --platform ios && npx pod-install && open ios/*.xcworkspace
 
-In Xcode oben links dein iPhone auswählen, unter *Signing & Capabilities* dein
-kostenloses Apple-ID als Team eintragen, dann auf ▶︎. Nach sieben Tagen dasselbe
-noch einmal.
-
-> **Wenn das Signieren fehlschlägt:** Ein kostenloses Apple-ID darf nicht alle
-> Berechtigungen vergeben. Lösch in `app.json` den Block `ios.entitlements` und nimm
-> ein kleineres Modell (Qwen3 1.7B, ca. 1,1 GB) — das bleibt unter der Speichergrenze,
-> die iOS ohne diese Berechtigung setzt.
-
-### Weg 2 — Apple Developer Program
-
-```bash
-npm install -g eas-cli
-eas login
+# Mit Entwicklerkonto, ohne Mac:
+npm install -g eas-cli && eas login
 eas build --platform ios --profile preview
+
+# Android, kostenlos und dauerhaft:
+eas build --platform android --profile preview
 ```
 
-Der Build läuft auf Expos Servern, du bekommst einen Installationslink. Kein Mac nötig.
-
-### Weg 3 — Android
-
-```bash
-eas build --platform android --profile preview   # ergibt eine .apk
-```
-
-Die `.apk` aufs Handy laden, antippen, installieren. Keine Kosten, keine Fristen.
+> **Wenn das Signieren mit kostenlosem Apple-ID fehlschlägt:** Lösch in `app.json`
+> den Block `ios.entitlements` und nimm ein kleineres Modell (Qwen3 1.7B) — das
+> bleibt unter der Speichergrenze, die iOS ohne diese Berechtigung setzt.
 
 ## Ein lokales Modell installieren
 
-Wenn die App nativ installiert ist:
+**In der Web-App:** Einstellungen → Lokale Modelle → antippen. WebLLM bringt eine
+feste Auswahl mit und lädt die Gewichte beim ersten Start selbst.
+
+**In der nativen App:**
 
 1. **Einstellungen → Lokale Modelle**
 2. Einen Vorschlag antippen oder auf Hugging Face suchen
@@ -139,14 +165,13 @@ Danach ist das Modell aktiv, und du kannst das Handy in den Flugmodus schalten.
 Die App sucht die Dateien live auf Hugging Face — feste Links wären nach ein paar
 Monaten tot, weil Repos umbenannt und Quantisierungen neu erzeugt werden.
 
-## Schon heute kostenlos loslegen
+## Falls die Web-App auf deinem Gerät nicht reicht
 
-Falls du nur eine **lokale KI auf dem iPhone** willst und dir der Aufwand oben zu
-groß ist: Es gibt fertige, kostenlose Apps im App Store, die genau das tun (etwa
-*PocketPal AI*, quelloffen und auf derselben Technik gebaut wie der lokale Modus
-hier). Kein Mac, kein Entwicklerkonto, sofort einsatzbereit. Dieses Projekt lohnt
-sich, wenn du beide Betriebsarten in einer App willst und alles selbst anpassen
-möchtest.
+Wenn dein iPhone kein WebGPU kann oder das Modell im Browser zu langsam ist, gibt es
+fertige, kostenlose Apps im App Store, die lokale Modelle nativ ausführen (etwa
+*PocketPal AI*, quelloffen und auf derselben Technik gebaut wie der native Modus
+hier). Kein Mac, kein Entwicklerkonto. Dafür ohne die Cloud-Betriebsart, das
+Gedächtnis und die eigenen Anweisungen aus diesem Projekt.
 
 ## Was das kostet
 
@@ -199,20 +224,25 @@ app/                     Bildschirme (Dateisystem-Routing via expo-router)
   settings.tsx           Einstellungen
   memory.tsx             Gespeichertes Wissen verwalten
   models.tsx             Lokale Modelle suchen, laden, aktivieren
+public/                  PWA: Manifest, Icon, Service Worker
+.github/workflows/       Baut und veröffentlicht die Web-App automatisch
 src/lib/
   claude.ts              Cloud: Agenten-Schleife mit Streaming, Werkzeugen, Fehlern
   localAgent.ts          Übersetzt den Verlauf für ein lokales Modell
-  local/engine.ts        Laden und Ausführen des Modells auf dem Gerät (llama.rn)
+  local/engine.ts        Modell auf dem Gerät ausführen (llama.cpp)
+  local/engine.web.ts    Dasselbe im Browser über WebGPU (WebLLM)
   local/hub.ts           Modellsuche auf Hugging Face, zur Laufzeit
   local/files.ts         Download, Speicherplatz, installierte Modelle
   local/curated.ts       Vorschläge als Startpunkt für die Suche
+  dialog.ts / .web.ts    Rückfragen – im Browser gibt es kein React-Native-Alert
+  storage.ts / .web.ts   Persistenz: Datei auf dem Gerät, localStorage im Browser
   models.ts              Modellkatalog inkl. Denk- und Preis-Eigenheiten
   prompt.ts              Systemprompt inkl. Gedächtnis und eigenen Anweisungen
   attachments.ts         Kamera, Galerie, PDFs → Inhaltsblöcke für die API
   render.ts              Leitet die Oberfläche aus dem API-Verlauf ab
   markdown.ts            Markdown-Parser (rein, ohne UI)
-  storage.ts             Persistenz als JSON-Datei
-  secure.ts              Schlüssel in der Keychain
+  readFile.ts / .web.ts  Datei als Base64 lesen
+  secure.ts              Schlüssel in Keychain bzw. localStorage
 src/state/               Zustand: Gespräche, Gedächtnis, laufende Antworten
 src/components/          Chat-Blase, Eingabezeile, Markdown-Darstellung, UI-Bausteine
 tests/                   Tests der reinen Logik (npm test)
@@ -229,9 +259,14 @@ mitgeführt.
 ## Tests
 
 ```bash
-npm test         # Logik: Markdown, Verlaufsdarstellung, Systemprompt
+npm test           # Logik: Markdown, Verlauf, Systemprompt, lokale Übersetzung
 npm run typecheck
+npm run build:web  # Web-App bauen (landet in dist/)
 ```
+
+Dateien mit `.web.ts` ersetzen im Web-Build automatisch ihr Gegenstück — so teilen
+sich native App und Web-App denselben Code, ohne dass irgendwo `if (Platform...)`
+steht.
 
 ## Erweitern
 

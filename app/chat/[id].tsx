@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Chooser, type ChooserOption } from '@/components/Chooser';
 import { Composer } from '@/components/Composer';
 import { MessageBubble } from '@/components/MessageBubble';
 import { Empty } from '@/components/ui';
@@ -42,6 +42,7 @@ export default function ChatScreen() {
   const stream = useStream(id);
 
   const listRef = useRef<FlatList<ChatItem>>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const items = useMemo(() => {
     const base = conversation ? deriveItems(conversation.messages) : [];
@@ -87,30 +88,35 @@ export default function ChatScreen() {
   const cost = estimateCost(model, conversation.usage);
   const isLocal = conversation.backend === 'local';
 
-  function chooseModel() {
-    const localName = settings.localModel;
-    const hasLocal = localName !== null && listInstalled().some((m) => m.name === localName);
-    const isLocal = conversation?.backend === 'local';
+  // Auswahl aus Cloud-Modellen und dem lokalen Modell.
+  type Choice = { kind: 'local' } | { kind: 'cloud'; model: (typeof MODELS)[number]['id'] };
 
-    Alert.alert('Modell wählen', 'Gilt für dieses Gespräch.', [
-      {
-        text: hasLocal
-          ? `Auf dem Gerät: ${localName}${isLocal ? '  ✓' : ''}`
-          : 'Auf dem Gerät (kein Modell geladen)',
-        onPress: () => {
-          if (hasLocal) setConversationBackend(id, 'local');
-          else router.push('/models');
-        },
-      },
-      ...MODELS.map((option) => ({
-        text: `Cloud · ${option.name}${!isLocal && option.id === conversation?.model ? '  ✓' : ''}`,
-        onPress: () => {
-          setConversationBackend(id, 'cloud');
-          setConversationModel(id, option.id);
-        },
-      })),
-      { text: 'Abbrechen', style: 'cancel' as const },
-    ]);
+  const localName = settings.localModel;
+  const hasLocal = localName !== null && listInstalled().some((m) => m.name === localName);
+
+  const choices: ChooserOption<Choice>[] = [
+    {
+      value: { kind: 'local' },
+      label: hasLocal ? `Auf dem Gerät: ${localName}` : 'Auf dem Gerät',
+      hint: hasLocal ? 'Kostenlos, ohne Internet' : 'Noch kein Modell geladen – hier tippen zum Einrichten',
+      selected: isLocal,
+    },
+    ...MODELS.map((option) => ({
+      value: { kind: 'cloud' as const, model: option.id },
+      label: `Cloud · ${option.name}`,
+      hint: option.tagline,
+      selected: !isLocal && option.id === conversation.model,
+    })),
+  ];
+
+  function applyChoice(choice: Choice) {
+    if (choice.kind === 'local') {
+      if (hasLocal) setConversationBackend(id, 'local');
+      else router.push('/models');
+      return;
+    }
+    setConversationBackend(id, 'cloud');
+    setConversationModel(id, choice.model);
   }
 
   function handleSend(text: string, attachments: PickedAttachment[]) {
@@ -135,7 +141,7 @@ export default function ChatScreen() {
         }}
       />
 
-      <Pressable onPress={chooseModel} style={[styles.modelBar, { borderBottomColor: theme.border }]}>
+      <Pressable onPress={() => setPickerOpen(true)} style={[styles.modelBar, { borderBottomColor: theme.border }]}>
         <Ionicons
           name={isLocal ? 'phone-portrait-outline' : 'cloud-outline'}
           size={13}
@@ -211,6 +217,14 @@ export default function ChatScreen() {
           onStop={() => stopRun(id)}
         />
       </View>
+      <Chooser
+        visible={pickerOpen}
+        title="Modell wählen"
+        subtitle="Gilt für dieses Gespräch."
+        options={choices}
+        onSelect={applyChoice}
+        onClose={() => setPickerOpen(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
