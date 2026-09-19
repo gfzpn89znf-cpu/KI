@@ -113,9 +113,9 @@ test('Verlauf: leere Assistenz-Nachrichten erzeugen keine leeren Blasen', () => 
 
 test('Systemprompt: Gedächtnis wird mit IDs eingebettet', () => {
   const prompt = buildSystemPrompt({ ...DEFAULT_SETTINGS, persona: 'Duze mich.' }, [
-    { id: 'm_1', fact: 'Heißt Till.', createdAt: 0 },
+    { id: 'm_1', fact: 'Wohnt in Bremen.', createdAt: 0 },
   ]);
-  assert.match(prompt, /\[m_1\] Heißt Till\./);
+  assert.match(prompt, /\[m_1\] Wohnt in Bremen\./);
   assert.match(prompt, /Duze mich\./);
   assert.match(prompt, /Heutiges Datum: \d{4}-\d{2}-\d{2}\./);
   // Keine Uhrzeit: sonst wäre der Prompt-Cache-Präfix jede Minute hinüber.
@@ -124,7 +124,7 @@ test('Systemprompt: Gedächtnis wird mit IDs eingebettet', () => {
 
 test('Systemprompt: ohne Gedächtnis keine Gedächtnis-Anweisungen', () => {
   const prompt = buildSystemPrompt({ ...DEFAULT_SETTINGS, memoryEnabled: false }, [
-    { id: 'm_1', fact: 'Heißt Till.', createdAt: 0 },
+    { id: 'm_1', fact: 'Wohnt in Bremen.', createdAt: 0 },
   ]);
   assert.doesNotMatch(prompt, /m_1/);
   assert.doesNotMatch(prompt, /remember/);
@@ -177,10 +177,10 @@ test('Lokal: zwei gleiche Rollen hintereinander werden zusammengefasst', () => {
 });
 
 test('Lokal: Systemprompt verspricht kein Internet und keine Werkzeuge', () => {
-  const prompt = buildLocalSystemPrompt('Duze mich.', [{ fact: 'Heißt Till.' }]);
+  const prompt = buildLocalSystemPrompt('Duze mich.', [{ fact: 'Wohnt in Bremen.' }]);
   assert.match(prompt, /kein(en)? Internetzugang/i);
   assert.match(prompt, /Duze mich\./);
-  assert.match(prompt, /Heißt Till\./);
+  assert.match(prompt, /Wohnt in Bremen\./);
   assert.doesNotMatch(prompt, /remember/);
 });
 

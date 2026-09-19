@@ -63,7 +63,7 @@ const REMEMBER_TOOL: Anthropic.Tool = {
     properties: {
       fact: {
         type: 'string',
-        description: 'Die Information als knapper, vollständiger Satz, z. B. "Heißt Till und programmiert hobbymäßig in Python."',
+        description: 'Die Information als knapper, vollständiger Satz, z. B. "Arbeitet als Tischlerin und programmiert hobbymäßig in Python."',
       },
     },
     required: ['fact'],
