@@ -12,6 +12,13 @@ export const SUPPORTS_SEARCH = false;
 /** Nur Modelle, die auf einem Telefon realistisch laufen. */
 const MAX_VRAM_MB = 4200;
 
+/**
+ * Oberhalb dieser Grenze wird es auf einem Handy eng: Ein Browser-Tab bekommt
+ * dort deutlich weniger Speicher als eine native App, und das Modell muss
+ * vollständig hineinpassen.
+ */
+const TIGHT_FOR_PHONE_MB = 1800;
+
 function friendlyName(modelId: string): string {
   return modelId.replace(/-MLC$/, '').replace(/-q4f(16|32)_1/, '').replace(/_/g, ' ');
 }
@@ -19,6 +26,8 @@ function friendlyName(modelId: string): string {
 export interface WebModel extends InstalledModel {
   vramMb: number;
   cached: boolean;
+  /** Läuft auf einem Handy vermutlich nicht – zu großer Speicherbedarf. */
+  tightForPhone: boolean;
 }
 
 function candidates(): WebModel[] {
@@ -32,6 +41,7 @@ function candidates(): WebModel[] {
       size: Math.round((record.vram_required_MB ?? 0) * 1024 * 1024),
       vramMb: record.vram_required_MB ?? 0,
       cached: false,
+      tightForPhone: (record.vram_required_MB ?? 0) > TIGHT_FOR_PHONE_MB,
     }))
     .sort((a, b) => a.vramMb - b.vramMb);
 }

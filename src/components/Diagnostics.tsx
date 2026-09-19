@@ -35,6 +35,8 @@ export function Diagnostics() {
       info.available ? 'Lokale Modelle: verfügbar' : 'Lokale Modelle: nicht verfügbar',
       ...info.facts.map((fact) => `${fact.label}: ${fact.value}`),
       ...(probe ? ['— Tiefer Test —', ...probe.lines] : []),
+      '— Einschätzung —',
+      info.detail,
     ].join('\n');
     Clipboard.setStringAsync(text).catch(() => undefined);
     setCopied(true);

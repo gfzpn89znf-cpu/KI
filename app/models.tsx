@@ -14,6 +14,7 @@ import {
   SUPPORTS_SEARCH,
   type InstalledModel,
 } from '@/lib/local/files';
+import type { WebModel } from '@/lib/local/files.web';
 import { formatBytes, listGgufFiles, quantOf, searchRepos, type GgufFile, type RepoSummary } from '@/lib/local/hub';
 import { unload } from '@/lib/local/engine';
 import { localDiagnostics } from '@/lib/local/diagnostics';
@@ -443,6 +444,11 @@ function BrowserModelList({
               <Text style={{ color: theme.textDim, fontSize: 12, marginTop: 2 }}>
                 braucht rund {formatBytes(item.size)} Grafikspeicher · lange tippen zum Entfernen
               </Text>
+              {(item as WebModel).tightForPhone ? (
+                <Text style={{ color: theme.danger, fontSize: 12, marginTop: 2 }}>
+                  Für ein Handy vermutlich zu groß – ein Browser-Tab bekommt weniger Speicher als eine App.
+                </Text>
+              ) : null}
             </View>
           </Pressable>
         );
