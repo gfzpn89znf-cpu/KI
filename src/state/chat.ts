@@ -3,7 +3,8 @@ import * as Speech from 'expo-speech';
 
 import { toContentBlock, type PickedAttachment } from '@/lib/attachments';
 import { describeError, runAgent, type MemoryOps } from '@/lib/claude';
-import { ensureModel, generate } from '@/lib/local/engine';
+import { localDiagnostics } from '@/lib/local/diagnostics';
+import { ensureModel, generate, isLocalAvailable } from '@/lib/local/engine';
 import { findInstalled } from '@/lib/local/files';
 import { buildLocalSystemPrompt, toLocalMessages } from '@/lib/localAgent';
 import { useAppStore } from '@/state/store';
@@ -142,6 +143,13 @@ async function runLocalTurn(conversationId: string): Promise<void> {
     const conversation = state.conversations[conversationId];
     if (!conversation) return;
 
+    if (!isLocalAvailable()) {
+      // Sollte durch die Oberfläche nicht mehr vorkommen; ältere Gespräche
+      // können aber noch auf „lokal" stehen.
+      state.setError(conversationId, `${localDiagnostics().detail} Wechsel oben in der Leiste auf die Cloud.`);
+      return;
+    }
+
     const installed = findInstalled(state.settings.localModel);
     if (!installed) {
       state.setError(
@@ -186,9 +194,8 @@ async function runLocalTurn(conversationId: string): Promise<void> {
     }
   } catch (err) {
     if (!controller.signal.aborted) {
-      useAppStore
-        .getState()
-        .setError(conversationId, err instanceof Error ? err.message : 'Das lokale Modell konnte nicht antworten.');
+      const message = err instanceof Error ? err.message : 'Das lokale Modell konnte nicht antworten.';
+      useAppStore.getState().setError(conversationId, message);
     }
   } finally {
     endRun(conversationId);

@@ -18,6 +18,7 @@ import { Composer } from '@/components/Composer';
 import { MessageBubble } from '@/components/MessageBubble';
 import { Empty } from '@/components/ui';
 import type { PickedAttachment } from '@/lib/attachments';
+import { localDiagnostics } from '@/lib/local/diagnostics';
 import { listInstalled } from '@/lib/local/files';
 import { estimateCost, getModel, MODELS } from '@/lib/models';
 import { deriveItems, type ChatItem } from '@/lib/render';
@@ -87,6 +88,10 @@ export default function ChatScreen() {
   const model = getModel(conversation.model);
   const cost = estimateCost(model, conversation.usage);
   const isLocal = conversation.backend === 'local';
+  const local = localDiagnostics();
+  // Gespräch steht auf „lokal", das Gerät kann es aber nicht – das muss vor dem
+  // Abschicken auffallen, nicht danach.
+  const localBlocked = isLocal && !local.available;
 
   // Auswahl aus Cloud-Modellen und dem lokalen Modell.
   type Choice = { kind: 'local' } | { kind: 'cloud'; model: (typeof MODELS)[number]['id'] };
@@ -97,8 +102,12 @@ export default function ChatScreen() {
   const choices: ChooserOption<Choice>[] = [
     {
       value: { kind: 'local' },
-      label: hasLocal ? `Auf dem Gerät: ${localName}` : 'Auf dem Gerät',
-      hint: hasLocal ? 'Kostenlos, ohne Internet' : 'Noch kein Modell geladen – hier tippen zum Einrichten',
+      label: 'Auf dem Gerät',
+      hint: !local.available
+        ? 'Auf diesem Gerät nicht verfügbar'
+        : hasLocal
+          ? `${localName} · kostenlos, ohne Internet`
+          : 'Noch kein Modell geladen – hier tippen zum Einrichten',
       selected: isLocal,
     },
     ...MODELS.map((option) => ({
@@ -111,7 +120,8 @@ export default function ChatScreen() {
 
   function applyChoice(choice: Choice) {
     if (choice.kind === 'local') {
-      if (hasLocal) setConversationBackend(id, 'local');
+      if (!local.available) router.push('/models');
+      else if (hasLocal) setConversationBackend(id, 'local');
       else router.push('/models');
       return;
     }
@@ -195,6 +205,26 @@ export default function ChatScreen() {
           ) : null
         }
       />
+
+      {localBlocked ? (
+        <View style={[styles.error, { backgroundColor: theme.surfaceAlt, borderColor: theme.accent }]}>
+          <Ionicons name="information-circle-outline" size={17} color={theme.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.text, fontSize: 13, lineHeight: 18 }}>
+              Dieses Gespräch steht auf „auf dem Gerät", aber {local.detail.charAt(0).toLowerCase() + local.detail.slice(1)}
+            </Text>
+          </View>
+          <Pressable
+            hitSlop={8}
+            onPress={() => {
+              setConversationBackend(id, 'cloud');
+              setError(id, undefined);
+            }}
+          >
+            <Text style={{ color: theme.accent, fontSize: 13, fontWeight: '700' }}>Zur Cloud</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {conversation.lastError ? (
         <Pressable

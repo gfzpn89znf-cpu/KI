@@ -14,7 +14,8 @@ import {
   type InstalledModel,
 } from '@/lib/local/files';
 import { formatBytes, listGgufFiles, quantOf, searchRepos, type GgufFile, type RepoSummary } from '@/lib/local/hub';
-import { isLocalAvailable, LOCAL_UNAVAILABLE_HINT, unload } from '@/lib/local/engine';
+import { unload } from '@/lib/local/engine';
+import { localDiagnostics } from '@/lib/local/diagnostics';
 import { useAppStore } from '@/state/store';
 import { radius, space, useTheme } from '@/theme';
 
@@ -124,7 +125,8 @@ export default function ModelsScreen() {
   }
 
   const percent = progress && progress.total > 0 ? progress.written / progress.total : 0;
-  const nativeReady = isLocalAvailable();
+  const diagnostics = localDiagnostics();
+  const nativeReady = diagnostics.available;
 
   // Im Browser verwaltet WebLLM die Gewichte selbst: keine Suche, keine
   // Dateiauswahl, nur eine feste Liste zum Aktivieren.
@@ -134,6 +136,7 @@ export default function ModelsScreen() {
         models={installed}
         activeName={settings.localModel}
         ready={nativeReady}
+        detail={diagnostics.detail}
         onActivate={(model) => updateSettings({ localModel: model.name, backend: 'local' })}
         onDelete={(model) => {
           deleteModel(model.name);
@@ -155,7 +158,7 @@ export default function ModelsScreen() {
         <View>
           {!nativeReady ? (
             <Card style={{ padding: space.lg, marginBottom: space.md, borderColor: theme.accent }}>
-              <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>{LOCAL_UNAVAILABLE_HINT}</Text>
+              <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>{diagnostics.detail}</Text>
               <Text style={{ color: theme.textDim, fontSize: 13, lineHeight: 19, marginTop: space.sm }}>
                 Herunterladen kannst du Modelle trotzdem schon – sie liegen dann bereit.
               </Text>
@@ -361,12 +364,14 @@ function BrowserModelList({
   models,
   activeName,
   ready,
+  detail,
   onActivate,
   onDelete,
 }: {
   models: InstalledModel[];
   activeName: string | null;
   ready: boolean;
+  detail: string;
   onActivate(model: InstalledModel): void;
   onDelete(model: InstalledModel): void;
 }) {
@@ -382,7 +387,14 @@ function BrowserModelList({
         <View>
           {!ready ? (
             <Card style={{ padding: space.lg, marginBottom: space.md, borderColor: theme.accent }}>
-              <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>{LOCAL_UNAVAILABLE_HINT}</Text>
+              <Text style={{ color: theme.text, fontSize: 15, fontWeight: '600', marginBottom: space.xs }}>
+                Lokale Modelle gehen hier nicht
+              </Text>
+              <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>{detail}</Text>
+              <Text style={{ color: theme.textDim, fontSize: 13, lineHeight: 19, marginTop: space.sm }}>
+                Bis dahin funktioniert die Cloud-Betriebsart ganz normal – dafür brauchst du nur
+                einen API-Schlüssel in den Einstellungen.
+              </Text>
             </Card>
           ) : null}
           <Text style={{ color: theme.textDim, fontSize: 13, lineHeight: 19, marginBottom: space.md }}>
@@ -403,9 +415,15 @@ function BrowserModelList({
           <Pressable
             onPress={() => onActivate(item)}
             onLongPress={() => onDelete(item)}
+            disabled={!ready}
             style={[
               styles.suggestion,
-              { backgroundColor: theme.surface, borderColor: active ? theme.accent : theme.border },
+              {
+                backgroundColor: theme.surface,
+                borderColor: active ? theme.accent : theme.border,
+                // Nicht auswählbar, wenn das Gerät es ohnehin nicht ausführen kann.
+                opacity: ready ? 1 : 0.45,
+              },
             ]}
           >
             <Ionicons

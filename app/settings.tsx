@@ -5,6 +5,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } fro
 
 import { Chooser, type ChooserOption } from '@/components/Chooser';
 import { Card, PressRow, PrimaryButton, SectionTitle, ToggleRow } from '@/components/ui';
+import { localDiagnostics } from '@/lib/local/diagnostics';
 import { listInstalled } from '@/lib/local/files';
 import { MODELS, type Effort } from '@/lib/models';
 import { saveApiKey } from '@/lib/secure';
@@ -37,6 +38,7 @@ export default function SettingsScreen() {
   const [saved, setSaved] = useState(false);
   const [persona, setPersona] = useState(settings.persona);
   const localModels = listInstalled();
+  const local = localDiagnostics();
   const [modelPicker, setModelPicker] = useState(false);
   const [effortPicker, setEffortPicker] = useState(false);
 
@@ -71,8 +73,17 @@ export default function SettingsScreen() {
       <SectionTitle>Betriebsart</SectionTitle>
       <Card>
         <Pressable
-          onPress={() => updateSettings({ backend: 'local' })}
-          style={[styles.choice, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}
+          onPress={() => {
+            // Nicht in eine Betriebsart wechseln lassen, die dieses Gerät nicht kann –
+            // sonst scheitert erst die abgeschickte Nachricht.
+            if (local.available) updateSettings({ backend: 'local' });
+            else router.push('/models');
+          }}
+          style={[
+            styles.choice,
+            { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
+            !local.available && { opacity: 0.55 },
+          ]}
         >
           <Ionicons
             name={settings.backend === 'local' ? 'radio-button-on' : 'radio-button-off'}
@@ -85,8 +96,10 @@ export default function SettingsScreen() {
               Kostenlos und ohne Internet. Nichts verlässt das Handy. Deutlich einfacher gestrickt
               als die Cloud-Modelle.
             </Text>
-            <Text style={{ color: theme.textDim, fontSize: 13, marginTop: 4 }}>
-              {settings.localModel ?? (localModels.length > 0 ? 'Kein Modell ausgewählt' : 'Noch kein Modell geladen')}
+            <Text style={{ color: local.available ? theme.textDim : theme.danger, fontSize: 13, marginTop: 4 }}>
+              {local.available
+                ? (settings.localModel ?? (localModels.length > 0 ? 'Kein Modell ausgewählt' : 'Noch kein Modell geladen'))
+                : 'Auf diesem Gerät nicht verfügbar – tippen für Details'}
             </Text>
           </View>
         </Pressable>
