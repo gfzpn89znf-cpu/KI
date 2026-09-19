@@ -1,0 +1,129 @@
+/**
+ * Prüft die reine Logik der App ohne React Native:
+ * Markdown-Parser, Ableitung der Oberfläche aus dem API-Verlauf und Systemprompt.
+ *
+ * Ausführen mit:  npm test
+ */
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { parseBlocks, parseInline } from '../src/lib/markdown';
+import { buildSystemPrompt } from '../src/lib/prompt';
+import { deriveItems } from '../src/lib/render';
+import { DEFAULT_SETTINGS } from '../src/state/defaults';
+
+test('Markdown: Codeblock mit Sprache', () => {
+  const blocks = parseBlocks('Text\n\n```ts\nconst a = 1;\n```\n\nEnde');
+  assert.equal(blocks.length, 3);
+  assert.deepEqual(blocks[1], { kind: 'code', language: 'ts', code: 'const a = 1;' });
+});
+
+test('Markdown: nicht geschlossener Codeblock schluckt den Rest, statt abzustürzen', () => {
+  const blocks = parseBlocks('```\nkaputt');
+  assert.equal(blocks.length, 1);
+  assert.equal(blocks[0].kind, 'code');
+});
+
+test('Markdown: Listen werden gebündelt', () => {
+  const blocks = parseBlocks('- eins\n- zwei\n\n1. a\n2. b');
+  assert.deepEqual(blocks[0], { kind: 'bullet', items: ['eins', 'zwei'] });
+  assert.deepEqual(blocks[1], { kind: 'ordered', items: ['a', 'b'] });
+});
+
+test('Markdown: Überschriften und Zitate', () => {
+  const blocks = parseBlocks('## Titel\n> zitiert\n> weiter');
+  assert.deepEqual(blocks[0], { kind: 'heading', level: 2, text: 'Titel' });
+  assert.deepEqual(blocks[1], { kind: 'quote', text: 'zitiert\nweiter' });
+});
+
+test('Markdown inline: fett, Code und Links', () => {
+  const segments = parseInline('Das ist **wichtig**, `code` und ein [Link](https://example.com).');
+  assert.deepEqual(
+    segments.filter((s) => s.bold || s.code || s.href),
+    [
+      { text: 'wichtig', bold: true },
+      { text: 'code', code: true },
+      { text: 'Link', href: 'https://example.com' },
+    ],
+  );
+  assert.equal(segments.map((s) => s.text).join(''), 'Das ist wichtig, code und ein Link.');
+});
+
+test('Markdown inline: Sternchen ohne Partner bleiben Text', () => {
+  const segments = parseInline('3 * 4 = 12');
+  assert.equal(segments.length, 1);
+  assert.equal(segments[0].text, '3 * 4 = 12');
+});
+
+test('Verlauf: Werkzeugrunden werden zu einer Antwort zusammengefasst', () => {
+  const items = deriveItems([
+    { role: 'user', content: [{ type: 'text', text: 'Wie ist das Wetter?' }] },
+    {
+      role: 'assistant',
+      content: [
+        { type: 'thinking', thinking: 'Nachschauen.', signature: '' },
+        { type: 'server_tool_use', id: 't1', name: 'web_search', input: { query: 'Wetter Berlin' } },
+      ],
+    },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'ok' }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'Sonnig.' }] },
+  ]);
+
+  assert.equal(items.length, 2);
+  assert.equal(items[0].role, 'user');
+  const answer = items[1];
+  assert.equal(answer.role, 'assistant');
+  if (answer.role !== 'assistant') return;
+  assert.equal(answer.text, 'Sonnig.');
+  assert.equal(answer.thinking, 'Nachschauen.');
+  assert.deepEqual(answer.tools, ['Gesucht: Wetter Berlin']);
+});
+
+test('Verlauf: Anhänge erscheinen als Chips, nicht als Rohdaten', () => {
+  const items = deriveItems([
+    {
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: 'AAAA' } },
+        { type: 'document', title: 'Vertrag.pdf', source: { type: 'base64', media_type: 'application/pdf', data: 'AAAA' } },
+        { type: 'text', text: 'Was steht da?' },
+      ],
+    },
+  ]);
+
+  assert.equal(items.length, 1);
+  const first = items[0];
+  if (first.role !== 'user') throw new Error('erwartet: Nutzer-Nachricht');
+  assert.deepEqual(first.attachments, [
+    { kind: 'image', name: 'Bild' },
+    { kind: 'document', name: 'Vertrag.pdf' },
+  ]);
+  assert.equal(first.text, 'Was steht da?');
+});
+
+test('Verlauf: leere Assistenz-Nachrichten erzeugen keine leeren Blasen', () => {
+  const items = deriveItems([
+    { role: 'user', content: 'Hallo' },
+    { role: 'assistant', content: [] },
+  ]);
+  assert.equal(items.length, 1);
+});
+
+test('Systemprompt: Gedächtnis wird mit IDs eingebettet', () => {
+  const prompt = buildSystemPrompt({ ...DEFAULT_SETTINGS, persona: 'Duze mich.' }, [
+    { id: 'm_1', fact: 'Heißt Till.', createdAt: 0 },
+  ]);
+  assert.match(prompt, /\[m_1\] Heißt Till\./);
+  assert.match(prompt, /Duze mich\./);
+  assert.match(prompt, /Heutiges Datum: \d{4}-\d{2}-\d{2}\./);
+  // Keine Uhrzeit: sonst wäre der Prompt-Cache-Präfix jede Minute hinüber.
+  assert.doesNotMatch(prompt, /\d{2}:\d{2}/);
+});
+
+test('Systemprompt: ohne Gedächtnis keine Gedächtnis-Anweisungen', () => {
+  const prompt = buildSystemPrompt({ ...DEFAULT_SETTINGS, memoryEnabled: false }, [
+    { id: 'm_1', fact: 'Heißt Till.', createdAt: 0 },
+  ]);
+  assert.doesNotMatch(prompt, /m_1/);
+  assert.doesNotMatch(prompt, /remember/);
+});

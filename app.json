@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "KI",
+    "slug": "ki-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "kiapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0D10"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.meineki.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Damit du der KI ein Foto schicken kannst.",
+        "NSPhotoLibraryUsageDescription": "Damit du der KI Bilder aus deiner Galerie schicken kannst.",
+        "NSMicrophoneUsageDescription": "Für Sprachaufnahmen in der App."
+      }
+    },
+    "android": {
+      "package": "com.meineki.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0D10",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Damit du der KI Bilder aus deiner Galerie schicken kannst.",
+          "cameraPermission": "Damit du der KI ein Foto schicken kannst."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
