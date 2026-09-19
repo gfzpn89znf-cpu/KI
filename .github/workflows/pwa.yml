@@ -4,11 +4,13 @@ name: Web-App veröffentlichen
 # Damit landet die App kostenlos auf dem iPhone: Seite in Safari öffnen,
 # "Zum Home-Bildschirm hinzufügen" – fertig, ohne Mac und ohne Apple-Konto.
 
+# Nur main: Die Umgebung github-pages lässt ohnehin nur den Hauptzweig
+# veröffentlichen, und ein zweiter Zweig in derselben Concurrency-Gruppe
+# würde den laufenden main-Build abbrechen.
 on:
   push:
     branches:
       - main
-      - claude/mobile-ai-app-chatgpt-fl7dkt
   workflow_dispatch:
 
 permissions:
