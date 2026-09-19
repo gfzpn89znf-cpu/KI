@@ -65,6 +65,12 @@ Im GitHub-Repository: **Settings → Pages → Source: GitHub Actions** auswähl
 Das genügt. Der Workflow `.github/workflows/pwa.yml` baut die App bei jedem Push und
 stellt sie bereit. Du brauchst dafür keinen eigenen Rechner.
 
+> Solange diese Einstellung fehlt, läuft der Build zwar durch, der letzte Schritt
+> („deploy") scheitert aber mit `Failed to create deployment (status: 404)`. Das ist
+> genau dieser fehlende Schalter, kein Fehler im Code. Nach dem Umstellen unter
+> **Actions** den letzten Lauf öffnen und **Re-run all jobs** drücken — oder einfach
+> den nächsten Push abwarten.
+
 ### Schritt 2 — Warten und Adresse öffnen
 
 Unter **Actions** siehst du den Lauf „Web-App veröffentlichen". Nach ein paar Minuten
