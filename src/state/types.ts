@@ -7,8 +7,16 @@ export interface MemoryItem {
   createdAt: number;
 }
 
+/** Wo das Modell läuft: in der Cloud oder auf dem Gerät. */
+export type Backend = 'cloud' | 'local';
+
 export interface Settings {
+  backend: Backend;
   model: ModelId;
+  /** Dateiname des gewählten lokalen Modells, null wenn keins installiert ist. */
+  localModel: string | null;
+  /** Kontextfenster des lokalen Modells in Token. */
+  localContextSize: number;
   effort: Effort;
   showThinking: boolean;
   webSearch: boolean;
@@ -33,6 +41,8 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   model: ModelId;
+  /** Betriebsart, mit der dieses Gespräch geführt wird. */
+  backend: Backend;
   /**
    * Der API-Verlauf ist die einzige Wahrheit: Die Oberfläche wird daraus
    * abgeleitet. Dadurch geht beim Fortsetzen eines Gesprächs nichts verloren

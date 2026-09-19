@@ -6,7 +6,14 @@ import { newId } from '@/lib/ids';
 import { type ModelId } from '@/lib/models';
 import { fileStorage } from '@/lib/storage';
 import { DEFAULT_SETTINGS } from '@/state/defaults';
-import { DEFAULT_USAGE, type Conversation, type MemoryItem, type Settings, type UsageTotals } from '@/state/types';
+import {
+  DEFAULT_USAGE,
+  type Backend,
+  type Conversation,
+  type MemoryItem,
+  type Settings,
+  type UsageTotals,
+} from '@/state/types';
 
 /** So viele Anhänge behalten ihre Rohdaten im gespeicherten Verlauf. */
 const KEEP_ATTACHMENTS = 4;
@@ -24,6 +31,7 @@ interface AppState {
   addUsage(id: string, usage: UsageTotals): void;
   setError(id: string, error?: string): void;
   setConversationModel(id: string, model: ModelId): void;
+  setConversationBackend(id: string, backend: Backend): void;
   /** Entfernt die letzte Nutzer-Nachricht und alles danach (für "nochmal versuchen"). */
   rewindToLastUser(id: string): Anthropic.MessageParam | null;
 
@@ -120,6 +128,7 @@ export const useAppStore = create<AppState>()(
           createdAt: now,
           updatedAt: now,
           model: model ?? get().settings.model,
+          backend: get().settings.backend,
           messages: [],
           usage: { ...DEFAULT_USAGE },
         };
@@ -203,6 +212,14 @@ export const useAppStore = create<AppState>()(
         });
       },
 
+      setConversationBackend(id, backend) {
+        set((state) => {
+          const conversation = state.conversations[id];
+          if (!conversation) return state;
+          return { conversations: { ...state.conversations, [id]: { ...conversation, backend } } };
+        });
+      },
+
       rewindToLastUser(id) {
         const conversation = get().conversations[id];
         if (!conversation) return null;
@@ -268,9 +285,17 @@ export const useAppStore = create<AppState>()(
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<AppState>;
+        const conversations = Object.fromEntries(
+          Object.entries(saved.conversations ?? {}).map(([id, conversation]) => [
+            id,
+            // Gespräche aus einer älteren App-Version kennen das Feld noch nicht.
+            { ...conversation, backend: conversation.backend ?? 'cloud' },
+          ]),
+        );
         return {
           ...current,
           ...saved,
+          conversations,
           // Neue Einstellungen aus einem App-Update ergänzen, statt sie zu verlieren.
           settings: { ...DEFAULT_SETTINGS, ...(saved.settings ?? {}) },
         };

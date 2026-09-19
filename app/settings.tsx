@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Card, PressRow, PrimaryButton, SectionTitle, ToggleRow } from '@/components/ui';
+import { listInstalled } from '@/lib/local/files';
 import { MODELS, type Effort } from '@/lib/models';
 import { saveApiKey } from '@/lib/secure';
 import { useRuntimeStore } from '@/state/runtime';
@@ -34,6 +35,7 @@ export default function SettingsScreen() {
   const [keyVisible, setKeyVisible] = useState(false);
   const [saved, setSaved] = useState(false);
   const [persona, setPersona] = useState(settings.persona);
+  const localModels = listInstalled();
 
   useEffect(() => setKeyDraft(apiKey), [apiKey]);
 
@@ -65,6 +67,54 @@ export default function SettingsScreen() {
       contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl * 2 }}
       keyboardShouldPersistTaps="handled"
     >
+      <SectionTitle>Betriebsart</SectionTitle>
+      <Card>
+        <Pressable
+          onPress={() => updateSettings({ backend: 'local' })}
+          style={[styles.choice, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }]}
+        >
+          <Ionicons
+            name={settings.backend === 'local' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={settings.backend === 'local' ? theme.accent : theme.textDim}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.text, fontSize: 16 }}>Auf dem Gerät</Text>
+            <Text style={{ color: theme.textDim, fontSize: 13, marginTop: 2, lineHeight: 18 }}>
+              Kostenlos und ohne Internet. Nichts verlässt das Handy. Deutlich einfacher gestrickt
+              als die Cloud-Modelle.
+            </Text>
+            <Text style={{ color: theme.textDim, fontSize: 13, marginTop: 4 }}>
+              {settings.localModel ?? (localModels.length > 0 ? 'Kein Modell ausgewählt' : 'Noch kein Modell geladen')}
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable onPress={() => updateSettings({ backend: 'cloud' })} style={styles.choice}>
+          <Ionicons
+            name={settings.backend === 'cloud' ? 'radio-button-on' : 'radio-button-off'}
+            size={20}
+            color={settings.backend === 'cloud' ? theme.accent : theme.textDim}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.text, fontSize: 16 }}>Über die Cloud</Text>
+            <Text style={{ color: theme.textDim, fontSize: 13, marginTop: 2, lineHeight: 18 }}>
+              Volle Stärke mit Websuche, Bildern und PDFs. Kostet pro Anfrage und geht an
+              Anthropic.
+            </Text>
+          </View>
+        </Pressable>
+      </Card>
+
+      <Card style={{ marginTop: space.sm }}>
+        <PressRow
+          label="Lokale Modelle"
+          hint={localModels.length === 0 ? 'Modell herunterladen' : `${localModels.length} installiert`}
+          onPress={() => router.push('/models')}
+          last
+        />
+      </Card>
+
       <SectionTitle>API-Schlüssel</SectionTitle>
       <Card style={{ padding: space.lg }}>
         <View style={[styles.keyRow, { borderColor: theme.border, backgroundColor: theme.surfaceAlt }]}>
@@ -118,6 +168,9 @@ export default function SettingsScreen() {
       </Card>
 
       <SectionTitle>Fähigkeiten</SectionTitle>
+      <Text style={{ color: theme.textDim, fontSize: 12, marginBottom: space.sm, lineHeight: 18 }}>
+        Gilt nur für die Cloud-Betriebsart. Ein lokales Modell hat kein Internet und keine Werkzeuge.
+      </Text>
       <Card>
         <ToggleRow
           label="Websuche"
@@ -195,6 +248,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  choice: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, padding: space.lg },
   keyRow: {
     flexDirection: 'row',
     alignItems: 'center',

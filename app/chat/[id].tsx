@@ -18,6 +18,7 @@ import { Composer } from '@/components/Composer';
 import { MessageBubble } from '@/components/MessageBubble';
 import { Empty } from '@/components/ui';
 import type { PickedAttachment } from '@/lib/attachments';
+import { listInstalled } from '@/lib/local/files';
 import { estimateCost, getModel, MODELS } from '@/lib/models';
 import { deriveItems, type ChatItem } from '@/lib/render';
 import { retryLast, sendMessage } from '@/state/chat';
@@ -35,6 +36,7 @@ export default function ChatScreen() {
   const conversation = useConversation(id);
   const settings = useAppStore((state) => state.settings);
   const setConversationModel = useAppStore((state) => state.setConversationModel);
+  const setConversationBackend = useAppStore((state) => state.setConversationBackend);
   const setError = useAppStore((state) => state.setError);
   const apiKey = useRuntimeStore((state) => state.apiKey);
   const stream = useStream(id);
@@ -83,12 +85,29 @@ export default function ChatScreen() {
 
   const model = getModel(conversation.model);
   const cost = estimateCost(model, conversation.usage);
+  const isLocal = conversation.backend === 'local';
 
   function chooseModel() {
+    const localName = settings.localModel;
+    const hasLocal = localName !== null && listInstalled().some((m) => m.name === localName);
+    const isLocal = conversation?.backend === 'local';
+
     Alert.alert('Modell wählen', 'Gilt für dieses Gespräch.', [
+      {
+        text: hasLocal
+          ? `Auf dem Gerät: ${localName}${isLocal ? '  ✓' : ''}`
+          : 'Auf dem Gerät (kein Modell geladen)',
+        onPress: () => {
+          if (hasLocal) setConversationBackend(id, 'local');
+          else router.push('/models');
+        },
+      },
       ...MODELS.map((option) => ({
-        text: `${option.name}${option.id === conversation?.model ? '  ✓' : ''}`,
-        onPress: () => setConversationModel(id, option.id),
+        text: `Cloud · ${option.name}${!isLocal && option.id === conversation?.model ? '  ✓' : ''}`,
+        onPress: () => {
+          setConversationBackend(id, 'cloud');
+          setConversationModel(id, option.id);
+        },
       })),
       { text: 'Abbrechen', style: 'cancel' as const },
     ]);
@@ -117,15 +136,24 @@ export default function ChatScreen() {
       />
 
       <Pressable onPress={chooseModel} style={[styles.modelBar, { borderBottomColor: theme.border }]}>
-        <Text style={{ color: theme.textDim, fontSize: 13 }}>
-          {model.name}
-          {model.supportsEffort ? ` · Tiefe: ${settings.effort}` : ''}
+        <Ionicons
+          name={isLocal ? 'phone-portrait-outline' : 'cloud-outline'}
+          size={13}
+          color={isLocal ? theme.accent : theme.textDim}
+        />
+        <Text numberOfLines={1} style={{ color: theme.textDim, fontSize: 13, maxWidth: '70%' }}>
+          {isLocal
+            ? (settings.localModel ?? 'Kein Modell geladen')
+            : `${model.name}${model.supportsEffort ? ` · Tiefe: ${settings.effort}` : ''}`}
         </Text>
         <Ionicons name="chevron-down" size={13} color={theme.textDim} />
-        {cost > 0 ? (
+        {!isLocal && cost > 0 ? (
           <Text style={{ color: theme.textDim, fontSize: 13, marginLeft: 'auto' }}>
             ≈ {cost < 0.01 ? '<0,01' : cost.toFixed(2)} $
           </Text>
+        ) : null}
+        {isLocal ? (
+          <Text style={{ color: theme.textDim, fontSize: 13, marginLeft: 'auto' }}>offline</Text>
         ) : null}
       </Pressable>
 
@@ -141,9 +169,11 @@ export default function ChatScreen() {
             icon="sparkles-outline"
             title="Leg los"
             hint={
-              apiKey.trim()
-                ? 'Frag nach irgendwas, häng ein Foto oder PDF an, oder lass im Netz nachschauen.'
-                : 'Trag zuerst in den Einstellungen deinen API-Schlüssel ein.'
+              isLocal
+                ? 'Läuft komplett auf deinem Handy. Kein Internet, keine Kosten.'
+                : apiKey.trim()
+                  ? 'Frag nach irgendwas, häng ein Foto oder PDF an, oder lass im Netz nachschauen.'
+                  : 'Trag zuerst in den Einstellungen deinen API-Schlüssel ein.'
             }
           />
         }

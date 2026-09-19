@@ -19,7 +19,13 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Damit du der KI ein Foto schicken kannst.",
         "NSPhotoLibraryUsageDescription": "Damit du der KI Bilder aus deiner Galerie schicken kannst.",
-        "NSMicrophoneUsageDescription": "Für Sprachaufnahmen in der App."
+        "NSMicrophoneUsageDescription": "Für Sprachaufnahmen in der App.",
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
+      },
+      "entitlements": {
+        "com.apple.developer.kernel.increased-memory-limit": true,
+        "com.apple.developer.kernel.extended-virtual-addressing": true
       }
     },
     "android": {
@@ -45,6 +51,17 @@
         {
           "photosPermission": "Damit du der KI Bilder aus deiner Galerie schicken kannst.",
           "cameraPermission": "Damit du der KI ein Foto schicken kannst."
+        }
+      ],
+      [
+        "llama.rn",
+        {
+          "enableEntitlements": true,
+          "entitlementsProfile": [
+            "development",
+            "preview",
+            "production"
+          ]
         }
       ]
     ],

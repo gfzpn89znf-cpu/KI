@@ -3,6 +3,9 @@ import * as Speech from 'expo-speech';
 
 import { toContentBlock, type PickedAttachment } from '@/lib/attachments';
 import { describeError, runAgent, type MemoryOps } from '@/lib/claude';
+import { ensureModel, generate } from '@/lib/local/engine';
+import { findInstalled } from '@/lib/local/files';
+import { buildLocalSystemPrompt, toLocalMessages } from '@/lib/localAgent';
 import { useAppStore } from '@/state/store';
 import { beginRun, endRun, useRuntimeStore } from '@/state/runtime';
 
@@ -36,7 +39,7 @@ export async function sendMessage(input: SendInput): Promise<void> {
   if (!conversation) return;
 
   const apiKey = runtime.apiKey.trim();
-  if (!apiKey) {
+  if (conversation.backend === 'cloud' && !apiKey) {
     app.setError(conversationId, 'Kein API-Schlüssel hinterlegt. Trag ihn in den Einstellungen ein.');
     return;
   }
@@ -50,6 +53,14 @@ export async function sendMessage(input: SendInput): Promise<void> {
 
 /** Erzeugt eine Antwort auf den aktuellen Stand des Verlaufs. */
 export async function runTurn(conversationId: string, apiKey: string): Promise<void> {
+  const conversation = useAppStore.getState().conversations[conversationId];
+  if (!conversation) return;
+
+  if (conversation.backend === 'local') {
+    await runLocalTurn(conversationId);
+    return;
+  }
+
   const runtime = useRuntimeStore.getState();
   const controller = beginRun(conversationId);
 
@@ -117,6 +128,73 @@ export async function runTurn(conversationId: string, apiKey: string): Promise<v
   }
 }
 
+/**
+ * Antwort vollständig auf dem Gerät erzeugen. Kein Netzwerk, keine Werkzeuge –
+ * das Modell bekommt nur den Text des Verlaufs und den Systemprompt.
+ */
+async function runLocalTurn(conversationId: string): Promise<void> {
+  const controller = beginRun(conversationId);
+  const runtime = useRuntimeStore.getState();
+  runtime.patchStream(conversationId, { active: true, text: '', thinking: '', tools: [] });
+
+  try {
+    const state = useAppStore.getState();
+    const conversation = state.conversations[conversationId];
+    if (!conversation) return;
+
+    const installed = findInstalled(state.settings.localModel);
+    if (!installed) {
+      state.setError(
+        conversationId,
+        'Kein lokales Modell installiert. Lade unter Einstellungen → Lokale Modelle eines herunter.',
+      );
+      return;
+    }
+
+    useRuntimeStore.getState().patchStream(conversationId, { tools: ['Modell wird geladen …'] });
+    const context = await ensureModel({
+      path: installed.path,
+      contextSize: state.settings.localContextSize,
+      onProgress: (percent) => {
+        useRuntimeStore
+          .getState()
+          .patchStream(conversationId, { tools: [`Modell wird geladen … ${Math.round(percent)} %`] });
+      },
+    });
+    if (controller.signal.aborted) return;
+    useRuntimeStore.getState().patchStream(conversationId, { tools: [] });
+
+    const system = buildLocalSystemPrompt(state.settings.persona, state.memory);
+    const result = await generate(context, {
+      messages: toLocalMessages(system, conversation.messages),
+      maxTokens: 2048,
+      temperature: 0.7,
+      signal: controller.signal,
+      onToken: (piece) => useRuntimeStore.getState().appendStream(conversationId, { text: piece }),
+    });
+
+    const text = result.text.trim();
+    if (text) {
+      const suffix = result.aborted ? '\n\n_[abgebrochen]_' : '';
+      useAppStore
+        .getState()
+        .appendMessages(conversationId, [
+          { role: 'assistant', content: [{ type: 'text', text: text + suffix }] },
+        ]);
+      maybeSpeak([{ role: 'assistant', content: [{ type: 'text', text }] }]);
+    }
+  } catch (err) {
+    if (!controller.signal.aborted) {
+      useAppStore
+        .getState()
+        .setError(conversationId, err instanceof Error ? err.message : 'Das lokale Modell konnte nicht antworten.');
+    }
+  } finally {
+    endRun(conversationId);
+    useRuntimeStore.getState().resetStream(conversationId);
+  }
+}
+
 /** Antwort vorlesen, wenn das in den Einstellungen aktiviert ist. */
 function maybeSpeak(appended: Anthropic.MessageParam[]): void {
   const { settings } = useAppStore.getState();
@@ -140,7 +218,7 @@ function maybeSpeak(appended: Anthropic.MessageParam[]): void {
 export async function retryLast(conversationId: string): Promise<void> {
   const app = useAppStore.getState();
   const apiKey = useRuntimeStore.getState().apiKey.trim();
-  if (!apiKey) return;
+  if (app.conversations[conversationId]?.backend === 'cloud' && !apiKey) return;
 
   const removed = app.rewindToLastUser(conversationId);
   if (!removed) return;

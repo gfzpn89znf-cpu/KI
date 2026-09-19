@@ -9,6 +9,8 @@ import test from 'node:test';
 
 import { parseBlocks, parseInline } from '../src/lib/markdown';
 import { buildSystemPrompt } from '../src/lib/prompt';
+import { formatBytes, quantOf } from '../src/lib/local/hub';
+import { buildLocalSystemPrompt, toLocalMessages } from '../src/lib/localAgent';
 import { deriveItems } from '../src/lib/render';
 import { DEFAULT_SETTINGS } from '../src/state/defaults';
 
@@ -126,4 +128,67 @@ test('Systemprompt: ohne Gedächtnis keine Gedächtnis-Anweisungen', () => {
   ]);
   assert.doesNotMatch(prompt, /m_1/);
   assert.doesNotMatch(prompt, /remember/);
+});
+
+// --- Lokaler Betrieb ---
+
+test('Lokal: Verlauf wird zu reinem Text, Werkzeug-Ergebnisse fliegen raus', () => {
+  const messages = toLocalMessages('SYSTEM', [
+    { role: 'user', content: [{ type: 'text', text: 'Hallo' }] },
+    {
+      role: 'assistant',
+      content: [
+        { type: 'thinking', thinking: 'Interner Kram', signature: '' },
+        { type: 'server_tool_use', id: 't1', name: 'web_search', input: {} },
+      ],
+    },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 't1', content: 'x' }] },
+    { role: 'assistant', content: [{ type: 'text', text: 'Hi!' }] },
+  ]);
+
+  assert.deepEqual(messages, [
+    { role: 'system', content: 'SYSTEM' },
+    { role: 'user', content: 'Hallo' },
+    { role: 'assistant', content: 'Hi!' },
+  ]);
+});
+
+test('Lokal: Anhänge werden benannt statt verschluckt', () => {
+  const messages = toLocalMessages('S', [
+    {
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AA' } },
+        { type: 'text', text: 'Was ist das?' },
+      ],
+    },
+  ]);
+  assert.match(String(messages[1].content), /Bild angehängt/);
+  assert.match(String(messages[1].content), /Was ist das\?/);
+});
+
+test('Lokal: zwei gleiche Rollen hintereinander werden zusammengefasst', () => {
+  const messages = toLocalMessages('S', [
+    { role: 'user', content: 'eins' },
+    { role: 'user', content: 'zwei' },
+  ]);
+  assert.equal(messages.length, 2);
+  assert.equal(messages[1].content, 'eins\n\nzwei');
+});
+
+test('Lokal: Systemprompt verspricht kein Internet und keine Werkzeuge', () => {
+  const prompt = buildLocalSystemPrompt('Duze mich.', [{ fact: 'Heißt Till.' }]);
+  assert.match(prompt, /kein(en)? Internetzugang/i);
+  assert.match(prompt, /Duze mich\./);
+  assert.match(prompt, /Heißt Till\./);
+  assert.doesNotMatch(prompt, /remember/);
+});
+
+test('Hub: Dateiname verrät die Quantisierung, Größen werden lesbar', () => {
+  assert.equal(quantOf('Qwen3-4B-Q4_K_M.gguf'), 'Q4_K_M');
+  assert.equal(quantOf('modell-IQ3_XXS.gguf'), 'IQ3_XXS');
+  assert.equal(quantOf('ohne-angabe.gguf'), '–');
+  assert.equal(formatBytes(2.4 * 1024 ** 3), '2.4 GB');
+  assert.equal(formatBytes(700 * 1024 ** 2), '700 MB');
+  assert.equal(formatBytes(0), 'unbekannt');
 });

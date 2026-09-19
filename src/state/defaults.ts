@@ -3,7 +3,10 @@ import type { Settings } from '@/state/types';
 
 /** Ausgangszustand der Einstellungen – auch die Grundlage für App-Updates. */
 export const DEFAULT_SETTINGS: Settings = {
+  backend: 'cloud',
   model: DEFAULT_MODEL,
+  localModel: null,
+  localContextSize: 4096,
   effort: 'high',
   showThinking: true,
   webSearch: true,

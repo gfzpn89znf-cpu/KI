@@ -47,6 +47,7 @@ export default function RootLayout() {
           <Stack.Screen name="chat/[id]" options={{ title: '' }} />
           <Stack.Screen name="settings" options={{ title: 'Einstellungen' }} />
           <Stack.Screen name="memory" options={{ title: 'Gedächtnis' }} />
+          <Stack.Screen name="models" options={{ title: 'Lokale Modelle' }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

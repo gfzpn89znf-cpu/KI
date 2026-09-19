@@ -1,91 +1,159 @@
 # KI — deine eigene KI-App fürs Handy
 
-Eine vollständige Chat-App für iPhone und Android, die direkt mit **Claude Opus 5**
-spricht — also mit demselben Modell, das auch hinter Claude steckt. Keine
-Zwischenfirma, kein fremder Server: die App auf deinem Handy redet direkt mit der
-Anthropic-API, mit deinem eigenen Schlüssel.
+Eine Chat-App für iPhone und Android mit **zwei Betriebsarten**, zwischen denen du
+jederzeit umschaltest:
+
+* **Auf dem Gerät** — ein Sprachmodell läuft direkt auf dem Handy. Kostenlos, ohne
+  Internet, nichts verlässt das Telefon. Dafür deutlich einfacher gestrickt.
+* **Über die Cloud** — **Claude Opus 5**, dasselbe Modell wie hinter Claude, mit
+  Websuche, Bildern und PDFs. Kostet pro Anfrage, mit deinem eigenen Schlüssel.
+
+Kein Account, keine Anmeldung, kein Server von mir dazwischen.
 
 ## Was die App kann
 
-| | |
-|---|---|
-| **Chat mit Streaming** | Antworten erscheinen Wort für Wort, jederzeit abbrechbar |
-| **Websuche** | Schlägt selbstständig im Netz nach und liest Seiten — kein veraltetes Wissen |
-| **Code-Ausführung** | Rechnet, wertet Daten aus und prüft sich selbst in einer Sandbox |
-| **Bilder & PDFs** | Foto aufnehmen, aus der Galerie wählen oder ein PDF anhängen und Fragen dazu stellen |
-| **Gedächtnis** | Merkt sich gesprächsübergreifend, wer du bist und was dir wichtig ist |
-| **Gedankengang** | Zeigt auf Wunsch, wie das Modell zu seiner Antwort kommt |
-| **Eigene Anweisungen** | Ton, Sprache und Verhalten dauerhaft festlegen |
-| **Vorlesen** | Antworten per Sprachausgabe anhören |
-| **Modellwahl** | Opus 5 (stärkstes), Sonnet 5 (guter Alltag), Haiku 4.5 (schnell & billig) |
-| **Denktiefe** | Von „schnell" bis „maximal" — du entscheidest zwischen Tempo und Gründlichkeit |
-| **Kostenanzeige** | Pro Gespräch siehst du, was es ungefähr gekostet hat |
+| | Auf dem Gerät | Cloud |
+|---|---|---|
+| Chat mit Streaming | ✅ | ✅ |
+| Kosten | **keine** | ca. 1–5 ct pro Frage |
+| Funktioniert ohne Internet | ✅ | ❌ |
+| Daten verlassen das Handy | **nie** | an Anthropic |
+| Websuche & Seiten lesen | ❌ | ✅ |
+| Code ausführen | ❌ | ✅ |
+| Bilder & PDFs verstehen | ❌ | ✅ |
+| Gedächtnis über Gespräche hinweg | ✅ (von Hand pflegbar) | ✅ (füllt sich selbst) |
+| Eigene Anweisungen, Vorlesen, Verlauf | ✅ | ✅ |
+| Stärke | etwa wie ein guter Assistent von 2023 | Spitzenklasse |
 
-Alles — Gespräche, Gedächtnis, Einstellungen — bleibt auf deinem Gerät. Es gibt
-keinen Account, keine Anmeldung und keinen Server von mir dazwischen.
+Gespräche, Gedächtnis, Modelle und Einstellungen liegen alle auf deinem Gerät.
 
-## Ehrlich vorweg
+## Ehrlich vorweg: der Haken
 
-Du wolltest „eine eigene KI, so schlau wie ChatGPT oder Claude". Genau das ist es —
-mit einer wichtigen Einschränkung, die du kennen solltest:
+Du wolltest eine eigene KI, **kostenlos und ohne Cloud**, die trotzdem so schlau ist
+wie ChatGPT oder Claude. Diese drei Dinge gleichzeitig gibt es nicht — und zwar aus
+einem harten physikalischen Grund:
 
-Ein Modell dieser Stärke **selbst zu trainieren** ist nichts, was auf einem Handy
-läuft. Dahinter stecken Rechenzentren im dreistelligen Millionenbereich. Was aber
-geht — und was diese App macht — ist, das fertige Modell über die offizielle API
-zu nutzen. Die Intelligenz ist damit buchstäblich dieselbe wie bei Claude; nur
-Oberfläche, Gedächtnis, Persönlichkeit und Daten gehören dir allein.
+Ein Spitzenmodell hat hunderte Milliarden Parameter und braucht Rechenzentren. Auf
+ein Handy passen realistisch 3–4 Milliarden. Das ist etwa das Hundertstel. Das
+lokale Modell schreibt gute Texte, fasst zusammen, übersetzt und beantwortet
+Alltagsfragen. Bei kniffligem Denken, beim Programmieren oder bei allem, was
+aktuelles Wissen braucht, bricht es ein — und es hat kein Internet, weiß also nichts
+über die Gegenwart.
 
-Der Unterschied zur Claude- oder ChatGPT-App: kein Abo, sondern Abrechnung nach
-tatsächlicher Nutzung, dein eigenes Gedächtnis, deine eigenen Regeln, und du kannst
-jede Zeile davon ändern.
+Deshalb kann diese App beides und du entscheidest pro Gespräch: das Private und
+Alltägliche lokal, das Schwierige über die Cloud.
 
-## In Betrieb nehmen
+Zur Einordnung der Cloud-Betriebsart: Anthropic trainiert **nicht** mit dem, was über
+die API läuft. Die Daten landen also in keinem Firmenmodell. Sie verlassen aber das
+Handy — deshalb gibt es den lokalen Modus.
 
-### 1. Voraussetzungen
+## Schnellstart (Cloud-Betriebsart)
 
-* [Node.js](https://nodejs.org) (Version 20 oder neuer)
-* Die App **Expo Go** aus dem App Store bzw. Play Store auf deinem Handy
-* Ein Anthropic-API-Schlüssel
+Das geht sofort, ohne Xcode und ohne Apple-Konto.
 
-### 2. API-Schlüssel holen
-
-1. Auf [console.anthropic.com](https://console.anthropic.com) registrieren
-2. Unter *Billing* ein Guthaben aufladen (5 $ reichen für sehr viele Gespräche)
-3. Unter *API Keys* einen neuen Schlüssel erzeugen und kopieren — er beginnt mit `sk-ant-`
-
-### 3. App starten
+1. [Node.js](https://nodejs.org) (Version 20+) installieren
+2. **Expo Go** aus dem App Store aufs iPhone laden
+3. Einen Schlüssel auf [console.anthropic.com](https://console.anthropic.com) erzeugen
+   (*Billing* → Guthaben aufladen, 5 $ reichen lange; *API Keys* → neuer Schlüssel, beginnt mit `sk-ant-`)
+4. Im Projektordner:
 
 ```bash
 npm install
 npx expo start
 ```
 
-Im Terminal erscheint ein QR-Code. Den scannst du mit der Kamera (iPhone) bzw.
-in Expo Go (Android) — die App startet auf deinem Handy.
+5. QR-Code mit der Kamera scannen → die App startet in Expo Go
+6. In der App oben rechts aufs Zahnrad, Schlüssel einfügen, **Speichern**
 
-### 4. Schlüssel eintragen
+Der Rechner muss dabei laufen. Die lokale Betriebsart funktioniert in Expo Go
+**nicht** — dazu braucht es eine richtig installierte App.
 
-In der App oben rechts auf das Zahnrad, den Schlüssel einfügen, **Speichern**. Fertig.
+## Aufs iPhone bekommen (für die lokale Betriebsart)
 
-## Als richtige App aufs Handy
+Hier kommt die unangenehme Wahrheit, und sie liegt nicht an der App, sondern an
+Apple: **Eine eigene App dauerhaft und kostenlos aufs iPhone zu bekommen, geht
+nicht.** Du hast drei Wege:
 
-Expo Go ist für den Anfang gedacht: Du brauchst dafür jedes Mal den laufenden
-Rechner. Für eine echte, eigenständige App auf dem Homescreen:
+| Weg | Kosten | Voraussetzung | Haken |
+|---|---|---|---|
+| **Xcode, kostenloses Apple-ID** | 0 € | ein Mac | Die App läuft **7 Tage**, danach musst du sie neu aufspielen |
+| **Apple Developer Program** | 99 $/Jahr | Mac oder EAS-Build | Läuft ein Jahr, funktioniert einfach |
+| **Android-Gerät** | 0 € | ein Android-Handy | `.apk` bauen und installieren, fertig |
+
+### Weg 1 — Mac mit Xcode, ohne Kosten
+
+```bash
+npm install
+npx expo prebuild --platform ios
+npx pod-install
+open ios/*.xcworkspace
+```
+
+In Xcode oben links dein iPhone auswählen, unter *Signing & Capabilities* dein
+kostenloses Apple-ID als Team eintragen, dann auf ▶︎. Nach sieben Tagen dasselbe
+noch einmal.
+
+> **Wenn das Signieren fehlschlägt:** Ein kostenloses Apple-ID darf nicht alle
+> Berechtigungen vergeben. Lösch in `app.json` den Block `ios.entitlements` und nimm
+> ein kleineres Modell (Qwen3 1.7B, ca. 1,1 GB) — das bleibt unter der Speichergrenze,
+> die iOS ohne diese Berechtigung setzt.
+
+### Weg 2 — Apple Developer Program
 
 ```bash
 npm install -g eas-cli
 eas login
-eas build --platform android --profile preview   # ergibt eine .apk zum Installieren
-eas build --platform ios --profile preview       # benötigt einen Apple-Developer-Account
+eas build --platform ios --profile preview
 ```
 
-Der Build läuft auf Expos Servern; du bekommst am Ende einen Download-Link.
-Für Android kannst du die `.apk` einfach installieren. Für iOS brauchst du ein
-Apple-Developer-Konto (99 $/Jahr) — oder du bleibst bei Expo Go.
+Der Build läuft auf Expos Servern, du bekommst einen Installationslink. Kein Mac nötig.
+
+### Weg 3 — Android
+
+```bash
+eas build --platform android --profile preview   # ergibt eine .apk
+```
+
+Die `.apk` aufs Handy laden, antippen, installieren. Keine Kosten, keine Fristen.
+
+## Ein lokales Modell installieren
+
+Wenn die App nativ installiert ist:
+
+1. **Einstellungen → Lokale Modelle**
+2. Einen Vorschlag antippen oder auf Hugging Face suchen
+3. Eine Datei wählen — **Q4_K_M** ist fast immer die richtige Wahl
+4. Herunterladen (2–3 GB, am besten im WLAN)
+
+Danach ist das Modell aktiv, und du kannst das Handy in den Flugmodus schalten.
+
+**Welches Modell?**
+
+| Modell | Größe | Braucht |
+|---|---|---|
+| Qwen3 4B | ~2,4 GB | 8 GB RAM (iPhone 15 Pro und neuer) |
+| Gemma 3 4B | ~2,5 GB | 8 GB RAM |
+| Llama 3.2 3B | ~2,0 GB | 6 GB RAM |
+| Qwen3 1.7B | ~1,1 GB | 4 GB RAM, läuft fast überall |
+
+Die App sucht die Dateien live auf Hugging Face — feste Links wären nach ein paar
+Monaten tot, weil Repos umbenannt und Quantisierungen neu erzeugt werden.
+
+## Schon heute kostenlos loslegen
+
+Falls du nur eine **lokale KI auf dem iPhone** willst und dir der Aufwand oben zu
+groß ist: Es gibt fertige, kostenlose Apps im App Store, die genau das tun (etwa
+*PocketPal AI*, quelloffen und auf derselben Technik gebaut wie der lokale Modus
+hier). Kein Mac, kein Entwicklerkonto, sofort einsatzbereit. Dieses Projekt lohnt
+sich, wenn du beide Betriebsarten in einer App willst und alles selbst anpassen
+möchtest.
 
 ## Was das kostet
 
-Abgerechnet wird pro verarbeitetem Text, nicht pro Monat.
+**Lokale Betriebsart: nichts.** Einmal das Modell herunterladen, danach ist jede
+Anfrage kostenlos — auch im Flugmodus.
+
+**Cloud-Betriebsart:** abgerechnet wird pro verarbeitetem Text, nicht pro Monat.
 
 | Modell | Eingabe | Ausgabe |
 |---|---|---|
@@ -103,7 +171,10 @@ kosten dadurch nur noch rund ein Zehntel.
 
 ## Zur Sicherheit
 
-Der API-Schlüssel liegt in der verschlüsselten Keychain (iOS) bzw. im Android
+In der lokalen Betriebsart geht überhaupt nichts raus: kein Schlüssel, keine
+Anfrage, kein Protokoll. Das Modell rechnet auf dem Gerät.
+
+In der Cloud-Betriebsart liegt der API-Schlüssel in der verschlüsselten Keychain (iOS) bzw. im Android
 Keystore, nicht im normalen App-Speicher, und wird ausschließlich an
 `api.anthropic.com` geschickt.
 
@@ -127,8 +198,14 @@ app/                     Bildschirme (Dateisystem-Routing via expo-router)
   chat/[id].tsx          Der Chat selbst
   settings.tsx           Einstellungen
   memory.tsx             Gespeichertes Wissen verwalten
+  models.tsx             Lokale Modelle suchen, laden, aktivieren
 src/lib/
-  claude.ts              Die Agenten-Schleife: Streaming, Werkzeuge, Fehler
+  claude.ts              Cloud: Agenten-Schleife mit Streaming, Werkzeugen, Fehlern
+  localAgent.ts          Übersetzt den Verlauf für ein lokales Modell
+  local/engine.ts        Laden und Ausführen des Modells auf dem Gerät (llama.rn)
+  local/hub.ts           Modellsuche auf Hugging Face, zur Laufzeit
+  local/files.ts         Download, Speicherplatz, installierte Modelle
+  local/curated.ts       Vorschläge als Startpunkt für die Suche
   models.ts              Modellkatalog inkl. Denk- und Preis-Eigenheiten
   prompt.ts              Systemprompt inkl. Gedächtnis und eigenen Anweisungen
   attachments.ts         Kamera, Galerie, PDFs → Inhaltsblöcke für die API
@@ -140,6 +217,9 @@ src/state/               Zustand: Gespräche, Gedächtnis, laufende Antworten
 src/components/          Chat-Blase, Eingabezeile, Markdown-Darstellung, UI-Bausteine
 tests/                   Tests der reinen Logik (npm test)
 ```
+
+Beide Betriebsarten teilen sich denselben Verlauf: Du kannst ein Gespräch lokal
+anfangen und mitten drin auf die Cloud umschalten, wenn es schwierig wird.
 
 Der gespeicherte Gesprächsverlauf ist bewusst exakt das Format der API. Dadurch geht
 beim Fortsetzen eines Gesprächs nichts verloren — Gedankengänge, Suchergebnisse und
@@ -159,6 +239,9 @@ Ein paar naheliegende nächste Schritte, falls du weitermachen willst:
 
 * **Eigene Werkzeuge**: In `src/lib/claude.ts` neben `remember`/`forget` eigene
   Funktionen ergänzen — Kalender, Notizen, Smart Home. Das Muster steht dort schon.
+* **Lokale Werkzeuge**: `llama.rn` beherrscht auch Werkzeugaufrufe, wenn das Modell
+  eine passende Chat-Vorlage mitbringt. Bewusst noch nicht eingebaut, weil kleine
+  Modelle dabei oft danebenliegen.
 * **Gespräche exportieren**: Der Verlauf ist reines JSON, ein Teilen-Button ist
   schnell gebaut.
 * **Widget oder Kurzbefehl**, um direkt aus dem Sperrbildschirm zu fragen.
